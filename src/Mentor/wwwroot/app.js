@@ -50,6 +50,13 @@ function totals(day) {
     analyzed: rows.reduce((n, c) => n + c.coverage.analyzedCount, 0),
   };
 }
+function canAnalyze(day) {
+  return (
+    !!state &&
+    dayRows(day).length > 0 &&
+    !state.analyses.some((a) => a.day === day && ['queued', 'running'].includes(a.status))
+  );
+}
 function selectDay(day) {
   selectedDay = day;
   if ($('archive-dialog').open) $('archive-dialog').close();
@@ -167,7 +174,7 @@ async function renderCurrent(day) {
     latest = attempts[0],
     success = attempts.find((a) => a.status === 'completed' && a.messageCount > 0);
   const active = attempts.find((a) => ['queued', 'running'].includes(a.status));
-  $('analyze').disabled = !!active;
+  $('analyze').disabled = !canAnalyze(day);
   $('analyze').textContent = active
     ? labels[active.status]
     : success
@@ -360,12 +367,7 @@ $('analyze').onclick = async () => {
   } catch (e) {
     notice(e.message);
   } finally {
-    if (
-      !state?.analyses.some(
-        (a) => a.day === selectedDay && ['queued', 'running'].includes(a.status)
-      )
-    )
-      b.disabled = false;
+    b.disabled = !canAnalyze(selectedDay || state?.today);
   }
 };
 refresh().catch((e) => notice(e.message));
