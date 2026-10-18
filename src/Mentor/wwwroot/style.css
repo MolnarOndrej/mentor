@@ -134,7 +134,8 @@ button:disabled {
   height: 44px;
   padding: 10px;
 }
-.icon-button svg {
+.icon-button svg,
+.close svg {
   width: 22px;
   height: 22px;
   fill: none;
@@ -434,7 +435,6 @@ dialog::backdrop {
   border-radius: 50%;
   background: transparent;
   color: #69766e;
-  font: 28px/1 Segoe UI;
 }
 .close:hover {
   background: #edf0e8;
