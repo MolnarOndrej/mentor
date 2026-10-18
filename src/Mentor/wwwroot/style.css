@@ -331,8 +331,21 @@ dialog::backdrop {
 .import label {
   margin-top: 0;
 }
-#day-status:not(:empty) {
-  margin-top: 14px;
+#analyze[data-status='ready'] {
+  box-shadow:
+    0 0 0 3px #edf0e8,
+    0 0 0 5px #759a82;
+}
+#analyze:disabled {
+  cursor: default;
+}
+#analyze[data-status='completed'] {
+  background: #edf0e8;
+  color: #54785e;
+  opacity: 1;
+}
+#analyze[aria-busy='true'] {
+  cursor: wait;
 }
 #archive-dialog > #day {
   width: auto;

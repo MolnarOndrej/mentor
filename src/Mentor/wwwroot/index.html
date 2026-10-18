@@ -20,7 +20,9 @@
             disabled
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M10 2h4l.6 3 2.1 1.2 2.9-.9 2 3.4-2.3 2v2.6l2.3 2-2 3.4-2.9-.9-2.1 1.2-.6 3h-4l-.6-3-2.1-1.2-2.9.9-2-3.4 2.3-2v-2.6l-2.3-2 2-3.4 2.9.9L9.4 5z" />
+              <path
+                d="M10 2h4l.6 3 2.1 1.2 2.9-.9 2 3.4-2.3 2v2.6l2.3 2-2 3.4-2.9-.9-2.1 1.2-.6 3h-4l-.6-3-2.1-1.2-2.9.9-2-3.4 2.3-2v-2.6l-2.3-2 2-3.4 2.9.9L9.4 5z"
+              />
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
@@ -89,7 +91,6 @@
             </button>
           </div>
         </div>
-        <div id="day-status" class="hint"></div>
         <div id="current-report"></div>
         <details id="day-conversations">
           <summary id="day-conversations-heading">Konverzace dne</summary>
@@ -98,7 +99,9 @@
       </section>
     </main>
     <dialog id="runtime-settings-dialog" aria-labelledby="runtime-settings-heading">
-      <button id="close-runtime-settings" class="close" aria-label="Zavřít" title="Zavřít">×</button>
+      <button id="close-runtime-settings" class="close" aria-label="Zavřít" title="Zavřít">
+        ×
+      </button>
       <h2 id="runtime-settings-heading">Nastavení</h2>
       <form id="runtime-settings-form">
         <label for="poll-interval">Interval pollování (sekundy)</label>

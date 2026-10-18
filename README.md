@@ -72,6 +72,7 @@ dotnet build Mentor.slnx --no-restore
 dotnet run --project tests/Mentor.Checks --no-build
 npm ci
 npm run check:ui
+npm run test:ui
 # Formát C# (nebo formátování bez --verify-no-changes):
 dotnet format whitespace Mentor.slnx --no-restore --verify-no-changes
 # Volitelně ověřit parser na lokálně uloženém skutečném HTML:

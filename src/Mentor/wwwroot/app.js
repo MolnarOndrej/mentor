@@ -1,6 +1,7 @@
 import { api } from './api.js';
 import { $, date, dayLabel, el, formatted } from './dom.js';
 import { PromptEditor } from './prompt-editor.js';
+import { analysisControl } from './analysis-control.js';
 const labels = {
   queued: 'Ve frontě',
   importing: 'Načítání',
@@ -61,11 +62,7 @@ function totals(day) {
   };
 }
 function canAnalyze(day) {
-  return (
-    !!state &&
-    dayRows(day).length > 0 &&
-    !state.analyses.some((a) => a.day === day && ['queued', 'running'].includes(a.status))
-  );
+  return analysisControl(state, day).enabled;
 }
 function selectDay(day) {
   selectedDay = day;
@@ -131,17 +128,15 @@ async function renderCurrent(day) {
     day === state.today ? 'Dnešní rozbor' : `Rozbor · ${dayLabel(day)}`;
   $('report-date').textContent = day === state.today ? dayLabel(day) : '';
   $('back-today').hidden = day === state.today;
-  $('day-status').textContent = totalsForDay.conversations
-    ? `${totalsForDay.conversations} konverzací`
-    : '';
   const attempts = state.analyses.filter((a) => a.day === day).sort((a, b) => b.id - a.id),
     latest = attempts[0],
     success = attempts.find((a) => a.status === 'completed' && a.messageCount > 0);
   const active = attempts.find((a) => ['queued', 'running'].includes(a.status));
-  $('analyze').disabled = !canAnalyze(day);
-  const analyzeLabel = active ? labels[active.status] : success ? 'Aktualizovat' : 'Analyzovat';
-  $('analyze').setAttribute('aria-label', analyzeLabel);
-  $('analyze').title = analyzeLabel;
+  const control = analysisControl(state, day);
+  $('analyze').disabled = !control.enabled;
+  $('analyze').dataset.status = control.status;
+  $('analyze').setAttribute('aria-label', control.label);
+  $('analyze').title = control.label;
   $('analyze').setAttribute('aria-busy', String(!!active));
   const report = $('current-report');
   report.replaceChildren();
@@ -165,16 +160,8 @@ async function renderCurrent(day) {
     report.append(content);
     await fillAttempt(content, success);
     if (pending) report.append(el('p', 'Přibyly nové zprávy. Rozbor můžete aktualizovat.', 'hint'));
-  } else if (!active)
-    report.append(
-      el(
-        'p',
-        totalsForDay.messages
-          ? 'Připraveno k rozboru.'
-          : 'Pro tento den zatím nejsou žádné zprávy.',
-        'empty'
-      )
-    );
+  } else if (!active && !totalsForDay.messages)
+    report.append(el('p', 'Pro tento den zatím nejsou žádné zprávy.', 'empty'));
   $('day-conversations-heading').textContent = `Konverzace (${totalsForDay.conversations})`;
   $('day-conversations').hidden = !totalsForDay.conversations;
   const list = $('current-conversations');

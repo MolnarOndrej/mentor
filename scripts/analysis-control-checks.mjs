@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import { analysisControl } from '../src/Mentor/wwwroot/analysis-control.js';
+
+const day = '2026-10-18';
+const state = { conversations: [], analyses: [] };
+assert.equal(analysisControl(undefined, day).enabled, false);
+assert.equal(analysisControl(state, day).status, 'empty');
+state.conversations.push({ days: [{ day, messageCount: 14, analyzedCount: 0 }] });
+assert.deepEqual(analysisControl(state, day), { enabled: true, status: 'ready', label: 'Analyzovat' });
+state.analyses.push({ day, status: 'queued', messageCount: 0 });
+assert.equal(analysisControl(state, day).enabled, false);
+state.analyses[0].status = 'running';
+assert.equal(analysisControl(state, day).status, 'running');
+state.analyses[0].status = 'failed';
+assert.equal(analysisControl(state, day).enabled, true);
+state.analyses[0] = { day, status: 'completed', messageCount: 14 };
+state.conversations[0].days[0].analyzedCount = 14;
+assert.deepEqual(analysisControl(state, day), { enabled: false, status: 'completed', label: 'Rozbor je aktuální' });
+state.conversations.push({ days: [{ day, messageCount: 2, analyzedCount: 0 }] });
+assert.deepEqual(analysisControl(state, day), { enabled: true, status: 'ready', label: 'Aktualizovat' });
+state.analyses.push({ day, status: 'failed', messageCount: 16 });
+assert.equal(analysisControl(state, day).enabled, true);
+assert.equal(analysisControl(state, '2026-10-19').status, 'empty');
+state.conversations[1].days[0].analyzedCount = 2;
+assert.equal(analysisControl(state, day).enabled, false);
+console.log('Analysis control checks passed: empty, ready, queued, running, failed, completed, new imports and day isolation.');
