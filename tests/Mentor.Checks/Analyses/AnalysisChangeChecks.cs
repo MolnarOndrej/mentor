@@ -43,9 +43,18 @@ internal static class AnalysisChangeChecks
         check(!service.GetState().ChangedDays.Contains(day), "analysis consumes refreshed changes");
         var secondUrl = url[..^1] + "2";
         var second = service.AddConversation(secondUrl).Id;
+        check(!service.GetState().ChangedDays.Contains(day), "queued new conversation waits for successful import before enabling analysis");
+        repository.ClaimImport();
+        repository.ImportFailed(second, "Unavailable source");
+        check(!service.GetState().ChangedDays.Contains(day), "failed new conversation import does not enable analysis");
+        repository.Retry(second);
         repository.ClaimImport();
         repository.ImportDone(second, importer.Data);
+        check(service.GetState().ChangedDays.Contains(day), "new conversation enables analysis after a previously completed analysis");
         CompleteAnalysis(repository, day);
+        check(!service.GetState().ChangedDays.Contains(day), "analysis consumes the newly added conversation");
+        check(!service.AddConversation(secondUrl).Added && !service.GetState().ChangedDays.Contains(day),
+            "duplicate conversation submission does not enable analysis again");
         importer.Data = importer.Data with
         {
             Title = "Changed title"
