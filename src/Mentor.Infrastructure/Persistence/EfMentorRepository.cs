@@ -102,8 +102,21 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
     public Settings Settings() => Read(db =>
     {
         var entity = db.Settings.AsNoTracking().Single(x => x.Id == 1);
-        return new Settings(entity.Prompt, entity.LastDailyDate);
+        return new Settings(entity.Prompt, entity.LastDailyDate,
+            new RuntimeSettings(entity.PollIntervalSeconds, entity.DailyTime));
     });
+
+    public void SaveRuntimeSettings(RuntimeSettings settings)
+    {
+        settings.Validate();
+        Write(db =>
+        {
+            var entity = db.Settings.Single(x => x.Id == 1);
+            entity.PollIntervalSeconds = settings.PollIntervalSeconds;
+            entity.DailyTime = settings.DailyTime;
+            return 0;
+        });
+    }
 
     public void SavePrompt(string prompt)
     {

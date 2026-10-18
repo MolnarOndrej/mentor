@@ -58,6 +58,8 @@ public sealed class MentorDbContext(DbContextOptions<MentorDbContext> options) :
         settings.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
         settings.Property(x => x.Prompt).HasColumnName("prompt");
         settings.Property(x => x.LastDailyDate).HasColumnName("last_daily_date");
+        settings.Property(x => x.PollIntervalSeconds).HasColumnName("poll_interval_seconds");
+        settings.Property(x => x.DailyTime).HasColumnName("daily_time");
     }
 
     private static void JsonList<T>(PropertyBuilder<List<T>> property)

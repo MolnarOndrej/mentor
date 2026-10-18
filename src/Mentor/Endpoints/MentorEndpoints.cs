@@ -1,4 +1,5 @@
 using Mentor.Application.Dashboard;
+using Mentor.Application.Configuration;
 using Mentor.Endpoints.Analyses;
 using Mentor.Endpoints.Conversations;
 using Mentor.Endpoints.Prompts;
@@ -11,6 +12,8 @@ public static class MentorEndpoints
     {
         var api = endpoints.MapGroup("/api");
         api.MapGet("/state", (MentorService service) => service.GetState());
+        api.MapPut("/settings", (RuntimeSettings request, MentorService service) =>
+            service.SaveRuntimeSettings(request));
         api.MapGet("/conversations/{id:long}", (long id, MentorService service) =>
             service.GetConversation(id) is { } row ? Results.Ok(row) : Results.NotFound());
         api.MapPost("/conversations", (AddConversationRequest request, MentorService service) =>

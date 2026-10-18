@@ -78,6 +78,7 @@ Check(ChatGptShareParser.Parse("streamController.enqueue(" + JsonSerializer.Seri
 table[timeKey] = "create_time";
 await CodexImportChecks.RunAsync(Check);
 InsertionDayChecks.Run(Check);
+await RuntimeSettingsChecks.RunAsync(Check);
 if (args.FirstOrDefault() is "--codex-share" or "--codex-url")
 {
     using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
@@ -154,10 +155,10 @@ var nextBatch = store.ClaimAnalysis()!.Value;
 Check(nextBatch.Input.Conversations.Count == 1 && nextBatch.Input.Conversations[0].Id == otherDay.Id && nextBatch.Input.Conversations[0].Messages.Count == 2, "next day contains only conversations inserted on that day");
 store.AnalysisDone(next, "next day");
 Reject(() => store.EnqueueAnalysis("manual", "not-a-date"), "invalid day rejected");
-Check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-07-01T19:59:00Z"), null) == null, "summer before 22 Prague");
-Check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-07-01T20:00:00Z"), null) == "2026-07-01", "summer at 22 Prague");
-Check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T21:00:00Z"), null) == "2026-12-01", "winter at 22 Prague");
-Check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T22:00:00Z"), "2026-12-01") == null, "daily exactly once");
+Check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-07-01T19:59:00Z"), null, "22:00") == null, "summer before 22 Prague");
+Check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-07-01T20:00:00Z"), null, "22:00") == "2026-07-01", "summer at 22 Prague");
+Check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T21:00:00Z"), null, "22:00") == "2026-12-01", "winter at 22 Prague");
+Check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T22:00:00Z"), "2026-12-01", "22:00") == null, "daily exactly once");
 Check(DailySchedule.Day(DateTimeOffset.Parse("2026-10-07T22:01:00Z")) == "2026-10-08", "Prague midnight differs from UTC date");
 Check(DailySchedule.Day(DateTimeOffset.Parse("2026-12-01T23:01:00Z")) == "2026-12-02", "winter midnight boundary");
 store.EnqueueAnalysis("daily", "2026-12-01");

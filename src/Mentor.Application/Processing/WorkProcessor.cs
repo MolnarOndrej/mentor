@@ -19,7 +19,8 @@ public sealed class WorkProcessor(
 {
     public async Task<bool> ProcessNextAsync(CancellationToken cancellationToken)
     {
-        var due = DailySchedule.DueDate(clock.GetUtcNow(), settings.Settings().LastDailyDate);
+        var current = settings.Settings();
+        var due = DailySchedule.DueDate(clock.GetUtcNow(), current.LastDailyDate, current.Runtime.DailyTime);
         if (due != null)
             queue.EnqueueAnalysis("daily", due);
 

@@ -1,0 +1,63 @@
+using Mentor.Application.Analyses;
+using Mentor.Application.Configuration;
+using Mentor.Application.Dashboard;
+using Mentor.Application.Diagnostics;
+using Mentor.Application.Processing;
+using Mentor.Checks.Persistence;
+using Mentor.Checks.TestDoubles;
+
+namespace Mentor.Checks.Application;
+
+internal static class RuntimeSettingsChecks
+{
+    public static async Task RunAsync(Action<bool, string> check)
+    {
+        var clock = new TestClock(DateTimeOffset.Parse("2026-07-01T18:14:59Z"));
+        var path = Path.Combine(Path.GetTempPath(), "mentor-settings-" + Guid.NewGuid(), "mentor.db");
+        var repository = TestRepository.Create(path, "Instructions\n{{data}}", clock);
+        var service = new MentorService(repository, repository, repository, repository, new TestImporter(), clock);
+        check(service.GetState().Settings.Runtime == new RuntimeSettings(5, "22:00"),
+            "new database exposes default polling and analysis schedule");
+
+        foreach (var invalid in new[] { new RuntimeSettings(0), new RuntimeSettings(3601),
+            new RuntimeSettings(3, "24:00"), new RuntimeSettings(3, "9:00"),
+            new RuntimeSettings(3, "12:60"), new RuntimeSettings(3, null!) })
+        {
+            try
+            {
+                service.SaveRuntimeSettings(invalid);
+                throw new InvalidOperationException("Invalid settings accepted.");
+            }
+            catch (ArgumentException) { }
+        }
+        check(repository.Settings().Runtime == new RuntimeSettings(), "invalid settings never overwrite persisted values");
+        check(service.SaveRuntimeSettings(new(3, "20:15")) == new RuntimeSettings(3, "20:15"),
+            "settings service returns the saved database values");
+        repository.SavePrompt("Edited instructions\n{{data}}");
+        repository = TestRepository.Create(path, "Ignored prompt\n{{data}}", clock);
+        check(repository.Settings() is { Runtime: { PollIntervalSeconds: 3, DailyTime: "20:15" },
+            Prompt: "Edited instructions\n{{data}}", LastDailyDate: null },
+            "runtime settings and prompt survive repository restart independently");
+
+        using var telemetry = new MentorTelemetry();
+        var processor = new WorkProcessor(repository, repository, new TestImporter(), new TestAnalyzer(),
+            clock, telemetry, new TestLogger());
+        check(!await processor.ProcessNextAsync(default), "worker waits until configured analysis minute");
+        clock.Advance(TimeSpan.FromSeconds(1));
+        check(await processor.ProcessNextAsync(default) && repository.Analyses().Single().Trigger == "daily",
+            "worker schedules analysis using time read from database");
+        repository.SaveRuntimeSettings(new(1, "20:16"));
+        clock.Advance(TimeSpan.FromMinutes(1));
+        check(!await processor.ProcessNextAsync(default) && repository.Analyses().Count == 1,
+            "changing schedule does not repeat an already completed daily analysis");
+        clock.Advance(TimeSpan.FromDays(1));
+        repository.SaveRuntimeSettings(new(1, "20:17"));
+        check(!await processor.ProcessNextAsync(default), "worker uses updated schedule without restart");
+        clock.Advance(TimeSpan.FromMinutes(1));
+        check(await processor.ProcessNextAsync(default), "updated analysis time takes effect the next day");
+        check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T19:14:59Z"), null, "20:15") == null &&
+            DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T19:15:00Z"), null, "20:15") == "2026-12-01" &&
+            DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T23:00:00Z"), null, "00:00") == "2026-12-02",
+            "custom schedule respects winter time, minute boundaries and midnight");
+    }
+}

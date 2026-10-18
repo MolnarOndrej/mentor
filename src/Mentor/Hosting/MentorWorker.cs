@@ -1,9 +1,10 @@
 using Mentor.Application.Processing;
+using Mentor.Application.Configuration;
 
 namespace Mentor.Hosting;
 
 public sealed class MentorWorker(IServiceScopeFactory scopeFactory, WorkerStatus status,
-    TimeProvider clock, ILogger<MentorWorker> logger) : BackgroundService
+    TimeProvider clock, ILogger<MentorWorker> logger, ISettingsRepository settings) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -14,8 +15,10 @@ public sealed class MentorWorker(IServiceScopeFactory scopeFactory, WorkerStatus
             {
                 status.Heartbeat();
                 var started = clock.GetTimestamp();
+                var pollSeconds = new RuntimeSettings().PollIntervalSeconds;
                 try
                 {
+                    pollSeconds = settings.Settings().Runtime.PollIntervalSeconds;
                     await using var scope = scopeFactory.CreateAsyncScope();
                     var processor = scope.ServiceProvider.GetRequiredService<WorkProcessor>();
                     status.BeginJob();
@@ -35,7 +38,8 @@ public sealed class MentorWorker(IServiceScopeFactory scopeFactory, WorkerStatus
                         error.GetType().Name, clock.GetElapsedTime(started).TotalSeconds);
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(5), clock, stoppingToken);
+                status.Heartbeat(pollSeconds);
+                await Task.Delay(TimeSpan.FromSeconds(pollSeconds), clock, stoppingToken);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }

@@ -37,6 +37,16 @@ let state,
   refreshing = false;
 const promptEditor = new PromptEditor();
 const reportCache = new Map();
+let pollTimer, pollInterval;
+function configurePolling(seconds) {
+  if (seconds === pollInterval) return;
+  clearInterval(pollTimer);
+  pollInterval = seconds;
+  pollTimer = setInterval(
+    () => refresh().catch((e) => notice('Spojení s Mentorem selhalo: ' + e.message)),
+    seconds * 1000
+  );
+}
 function dayRows(day) {
   return state.conversations
     .filter((c) => c.days.some((d) => d.day === day))
@@ -233,6 +243,8 @@ async function refresh(force = false) {
       initialized = true;
     }
     state = next;
+    configurePolling(state.settings.runtime.pollIntervalSeconds);
+    $('open-runtime-settings').disabled = false;
     const days = [
       ...new Set([
         ...state.conversations.flatMap((c) => c.days.map((d) => d.day)),
@@ -296,6 +308,32 @@ async function showConversation(id) {
 $('close-conversation').onclick = () => $('conversation-dialog').close();
 $('close-prompt').onclick = () => $('prompt-dialog').close();
 $('open-settings').onclick = () => promptEditor.open($('day').value);
+$('open-runtime-settings').onclick = () => {
+  $('poll-interval').value = state.settings.runtime.pollIntervalSeconds;
+  $('daily-time').value = state.settings.runtime.dailyTime;
+  $('runtime-settings-error').textContent = '';
+  $('runtime-settings-dialog').showModal();
+};
+$('close-runtime-settings').onclick = () => $('runtime-settings-dialog').close();
+$('runtime-settings-form').onsubmit = async (e) => {
+  e.preventDefault();
+  e.submitter.disabled = true;
+  $('runtime-settings-error').textContent = '';
+  try {
+    const saved = await api('settings', 'PUT', {
+      pollIntervalSeconds: Number($('poll-interval').value),
+      dailyTime: $('daily-time').value,
+    });
+    state.settings.runtime = saved;
+    configurePolling(saved.pollIntervalSeconds);
+    $('runtime-settings-dialog').close();
+    notice('Nastavení bylo uloženo.');
+  } catch (error) {
+    $('runtime-settings-error').textContent = error.message;
+  } finally {
+    e.submitter.disabled = false;
+  }
+};
 $('open-archive').onclick = () => $('archive-dialog').showModal();
 $('close-archive').onclick = () => $('archive-dialog').close();
 $('back-today').onclick = () => selectDay(state.today);
@@ -333,4 +371,5 @@ $('analyze').onclick = async () => {
   }
 };
 refresh().catch((e) => notice(e.message));
-setInterval(() => refresh().catch((e) => notice('Spojení s Mentorem selhalo: ' + e.message)), 5000);
+// Retry a failed initial connection until the database settings are available.
+configurePolling(5);

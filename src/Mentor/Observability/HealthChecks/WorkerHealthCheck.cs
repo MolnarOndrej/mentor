@@ -17,7 +17,8 @@ public sealed class WorkerHealthCheck(WorkerStatus status, TimeProvider clock,
         var healthy = snapshot.Running &&
             (snapshot.JobStarted is { } started
                 ? now - started < maxJobDuration + TimeSpan.FromSeconds(30)
-                : snapshot.LastHeartbeat is { } heartbeat && now - heartbeat < TimeSpan.FromSeconds(30));
+                : snapshot.LastHeartbeat is { } heartbeat &&
+                  now - heartbeat < TimeSpan.FromSeconds(snapshot.PollIntervalSeconds + 30));
         return Task.FromResult(healthy ? HealthCheckResult.Healthy() : HealthCheckResult.Unhealthy("Worker is stopped or unresponsive."));
     }
 }

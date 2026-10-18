@@ -6,6 +6,7 @@ public sealed class WorkerStatus(TimeProvider clock)
     private DateTimeOffset? heartbeat;
     private DateTimeOffset? jobStarted;
     private bool running;
+    private int pollIntervalSeconds;
 
     public void Start()
     {
@@ -15,10 +16,13 @@ public sealed class WorkerStatus(TimeProvider clock)
             heartbeat = clock.GetUtcNow();
         }
     }
-    public void Heartbeat()
+    public void Heartbeat(int idleSeconds = 0)
     {
         lock (gate)
+        {
             heartbeat = clock.GetUtcNow();
+            pollIntervalSeconds = idleSeconds;
+        }
     }
     public void BeginJob()
     {
@@ -45,6 +49,6 @@ public sealed class WorkerStatus(TimeProvider clock)
     public WorkerSnapshot Snapshot()
     {
         lock (gate)
-            return new(running, heartbeat, jobStarted);
+            return new(running, heartbeat, jobStarted, pollIntervalSeconds);
     }
 }

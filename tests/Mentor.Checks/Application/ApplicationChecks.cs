@@ -107,6 +107,13 @@ internal static class ApplicationChecks
         clock.Advance(TimeSpan.FromMinutes(1));
         check((await health.CheckHealthAsync(new())).Status == HealthStatus.Unhealthy,
             "stale worker heartbeat is unhealthy");
+        state.Heartbeat(3600);
+        clock.Advance(TimeSpan.FromMinutes(1));
+        check((await health.CheckHealthAsync(new())).Status == HealthStatus.Healthy,
+            "configured long polling interval does not falsely fail readiness");
+        clock.Advance(TimeSpan.FromHours(1));
+        check((await health.CheckHealthAsync(new())).Status == HealthStatus.Unhealthy,
+            "worker missing its configured polling deadline fails readiness");
         state.BeginJob();
         check((await health.CheckHealthAsync(new())).Status == HealthStatus.Healthy,
             "legitimate long-running analysis does not falsely fail heartbeat health");

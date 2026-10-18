@@ -9,8 +9,9 @@ import { fileURLToPath } from 'node:url';
 // The CLI is the deterministic test executable; this never calls a model service.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const suffix = process.platform === 'win32' ? '.exe' : '';
-const app = join(root, `src/Mentor/bin/Debug/net10.0/Mentor${suffix}`);
-const fakeCli = join(root, `tests/Mentor.Checks/bin/Debug/net10.0/Mentor.Checks${suffix}`);
+const configuration = process.env.MENTOR_BUILD_CONFIGURATION || 'Debug';
+const app = join(root, `src/Mentor/bin/${configuration}/net10.0/Mentor${suffix}`);
+const fakeCli = join(root, `tests/Mentor.Checks/bin/${configuration}/net10.0/Mentor.Checks${suffix}`);
 const dataRoot = join(root, 'src/Mentor/Data');
 mkdirSync(dataRoot, { recursive: true });
 const directory = mkdtempSync(join(dataRoot, 'smoke-'));
@@ -48,9 +49,9 @@ for (const stream of [server.stdout, server.stderr]) {
   stream.on('data', (chunk) => { if (diagnostics.length < 20_000) diagnostics += chunk; });
 }
 const base = 'http://127.0.0.1:5178';
-async function request(path, body) {
+async function request(path, body, method = 'POST') {
   const response = await fetch(base + path, body === undefined ? {} : {
-    method: 'POST',
+    method,
     headers: { 'Content-Type': 'application/json', 'X-Mentor-Request': '1' },
     body: JSON.stringify(body),
   });
@@ -70,6 +71,24 @@ async function until(action, timeout = 15_000) {
 try {
   const state = await until(() => request('/api/state'));
   assert.equal(state.conversations.length, 2);
+  assert.deepEqual(state.settings.runtime, { pollIntervalSeconds: 5, dailyTime: '22:00' });
+  const runtime = { pollIntervalSeconds: 1, dailyTime: '23:59' };
+  assert.deepEqual(await request('/api/settings', runtime, 'PUT'), runtime);
+  assert.deepEqual((await request('/api/state')).settings.runtime, runtime);
+  for (const invalidSettings of [
+    { pollIntervalSeconds: 0, dailyTime: '22:00' },
+    { pollIntervalSeconds: 3.5, dailyTime: '22:00' },
+    { pollIntervalSeconds: 3, dailyTime: '24:00' },
+    { pollIntervalSeconds: 3, dailyTime: null },
+  ]) {
+    const response = await fetch(base + '/api/settings', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Mentor-Request': '1' },
+      body: JSON.stringify(invalidSettings),
+    });
+    assert.equal(response.status, 400);
+    assert.deepEqual((await request('/api/state')).settings.runtime, runtime);
+  }
+  await until(async () => (await request('/api/operations')).worker.pollIntervalSeconds === 1);
   const readiness = await request('/health/ready');
   assert.equal(readiness.status, 'Healthy');
   const day = state.conversations[0].days[0].day;
@@ -101,7 +120,8 @@ try {
   assert.equal(invalid.status, 400);
   assert.ok((await invalid.json()).traceId);
   console.log(JSON.stringify({ readiness: 'Healthy', conversationsPerAnalysis: 2, exactPrompt: true,
-    tracesExported: true, metricsExported: true, privateContentExcluded: true, logsDirectory: directory }));
+    tracesExported: true, metricsExported: true, privateContentExcluded: true,
+    databaseSettings: true, liveWorkerPolling: true, settingsValidation: true, logsDirectory: directory }));
 } finally {
   server.kill();
   await new Promise((done) => server.exitCode !== null ? done() : server.once('exit', done));

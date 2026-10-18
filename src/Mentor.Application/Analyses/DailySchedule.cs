@@ -9,10 +9,11 @@ public static class DailySchedule
     public static string Day(DateTimeOffset instant) =>
         TimeZoneInfo.ConvertTime(instant, Prague).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-    public static string? DueDate(DateTimeOffset utc, string? lastDate)
+    public static string? DueDate(DateTimeOffset utc, string? lastDate, string dailyTime)
     {
         var local = TimeZoneInfo.ConvertTime(utc, Prague);
         var date = Day(utc);
-        return local.Hour >= 22 && lastDate != date ? date : null;
+        var scheduled = TimeOnly.ParseExact(dailyTime, "HH:mm", CultureInfo.InvariantCulture);
+        return TimeOnly.FromDateTime(local.DateTime) >= scheduled && lastDate != date ? date : null;
     }
 }

@@ -1,3 +1,3 @@
 namespace Mentor.Hosting;
 
-public record WorkerSnapshot(bool Running, DateTimeOffset? LastHeartbeat, DateTimeOffset? JobStarted);
+public record WorkerSnapshot(bool Running, DateTimeOffset? LastHeartbeat, DateTimeOffset? JobStarted, int PollIntervalSeconds);

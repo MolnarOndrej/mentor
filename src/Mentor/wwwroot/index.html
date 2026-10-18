@@ -12,6 +12,7 @@
       <header>
         <h1>Mentor<span>.</span></h1>
         <nav aria-label="Další možnosti">
+          <button id="open-runtime-settings" class="secondary" disabled>Nastavení</button>
           <button
             id="open-settings"
             class="secondary icon-button"
@@ -85,6 +86,20 @@
         </details>
       </section>
     </main>
+    <dialog id="runtime-settings-dialog" aria-labelledby="runtime-settings-heading">
+      <button id="close-runtime-settings" class="close" aria-label="Zavřít" title="Zavřít">×</button>
+      <h2 id="runtime-settings-heading">Nastavení</h2>
+      <form id="runtime-settings-form">
+        <label for="poll-interval">Interval pollování (sekundy)</label>
+        <input id="poll-interval" type="number" min="1" max="3600" step="1" required />
+        <p class="hint">Obnovování stránky a kontrola fronty na pozadí. Změna se projeví při dalším pollování.</p>
+        <label for="daily-time">Čas automatického rozboru</label>
+        <input id="daily-time" type="time" step="60" required />
+        <p class="hint">Časové pásmo Europe/Prague. Pokud dnešní čas již uplynul, rozbor se spustí při další kontrole. Každý den nejvýše jednou.</p>
+        <p id="runtime-settings-error" class="error" role="alert"></p>
+        <div class="actions"><button type="submit">Uložit nastavení</button></div>
+      </form>
+    </dialog>
     <dialog id="settings-dialog">
       <button id="close-settings" class="close" aria-label="Zavřít" title="Zavřít">×</button>
       <h2>Zadání pro Codex CLI</h2>

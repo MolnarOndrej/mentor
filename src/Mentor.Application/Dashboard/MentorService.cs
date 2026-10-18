@@ -40,6 +40,12 @@ public sealed class MentorService(
     public Analysis? GetAnalysis(long id) => analyses.FindAnalysis(id);
     public string? GetFullPrompt(long id) => analyses.FullPrompt(id);
 
+    public RuntimeSettings SaveRuntimeSettings(RuntimeSettings value)
+    {
+        settings.SaveRuntimeSettings(value);
+        return settings.Settings().Runtime;
+    }
+
     public AddConversationResult AddConversation(string? url)
     {
         var (conversation, added) = conversations.Add(importer.NormalizeUrl(url ?? ""));
