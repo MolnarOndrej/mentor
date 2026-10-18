@@ -66,7 +66,7 @@ function selectDay(day) {
 }
 function conversationCard(c, day) {
   const card = el('div', undefined, 'card');
-  card.append(button(`#${c.id} · ${c.title}`, () => showConversation(c.id, day), 'link-button'));
+  card.append(button(`#${c.id} · ${c.title}`, () => showConversation(c.id), 'link-button'));
   const meta = el('div', undefined, 'meta');
   if (c.status !== 'ready') meta.append(badge(c.status));
   if (day) {
@@ -133,7 +133,7 @@ async function fillAttempt(container, a) {
   const tools = el('div', undefined, 'actions');
   tools.append(button('Odeslaný prompt', () => showPrompt(a.id), 'link-button'));
   for (const id of a.conversationIds)
-    tools.append(button(`Konverzace #${id}`, () => showConversation(id, a.day), 'link-button'));
+    tools.append(button(`Konverzace #${id}`, () => showConversation(id), 'link-button'));
   details.append(tools);
   container.append(details);
 }
@@ -303,35 +303,20 @@ async function refresh(force = false) {
     refreshing = false;
   }
 }
-async function showConversation(id, day) {
+async function showConversation(id) {
   const c = await api('conversations/' + id);
   $('conversation-title').textContent = `#${c.id} · ${c.title}`;
   const content = $('conversation-content');
   content.replaceChildren();
-  const codex = new URL(c.url).pathname.startsWith('/s/cx_');
-  if (codex)
-    content.append(
-      el('p', 'Codex nesdílí časy zpráv. Zprávy jsou přiřazeny ke dni vložení odkazu.', 'hint')
-    );
-  const messages = c.messages.filter(
-    (m) =>
-      !day ||
-      new Intl.DateTimeFormat('sv-SE', {
-        timeZone: 'Europe/Prague',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(new Date(m.createdAt)) === day
+  content.append(
+    el('p', `Vloženo ${date(c.createdAt)} · Rozbor podle dne vložení odkazu.`, 'hint')
   );
+  const messages = c.messages;
   if (!messages.length)
     content.append(el('p', c.error || 'Pro vybraný den nejsou dostupné zprávy.'));
   for (const m of messages) {
     const row = el('div', undefined, 'message');
-    row.append(
-      el('strong', `${m.number}. ${m.role === 'user' ? 'Vy' : 'AI'}`),
-      el('p', `${codex ? 'Vložení odkazu: ' : ''}${date(m.createdAt)}`, 'meta'),
-      el('pre', m.text)
-    );
+    row.append(el('strong', `${m.number}. ${m.role === 'user' ? 'Vy' : 'AI'}`), el('pre', m.text));
     content.append(row);
   }
   if (!$('conversation-dialog').open) $('conversation-dialog').showModal();

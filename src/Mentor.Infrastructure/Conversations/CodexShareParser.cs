@@ -5,7 +5,7 @@ namespace Mentor.Infrastructure.Conversations;
 
 public static class CodexShareParser
 {
-    public static ImportedConversation Parse(string json, DateTimeOffset addedAt)
+    public static ImportedConversation Parse(string json)
     {
         try
         {
@@ -66,10 +66,8 @@ public static class CodexShareParser
                         default:
                             throw InvalidSnapshot();
                     }
-                    // Codex snapshots have no message timestamps. The explicit import policy
-                    // assigns all messages to the original link insertion day, including retries.
                     if (!string.IsNullOrWhiteSpace(text))
-                        messages.Add(new(role, text, addedAt, messages.Count + 1));
+                        messages.Add(new(role, text, messages.Count + 1));
                 }
             }
             if (!messages.Any(m => m.Role == "user") || !messages.Any(m => m.Role == "assistant"))

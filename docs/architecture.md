@@ -53,7 +53,7 @@ DI registruje `IDbContextFactory<MentorDbContext>`. Repository je singleton kvů
 
 ## Zachované invarianty
 
-- Jeden den spojuje N konverzací podle skutečných časů zpráv v Praze.
+- Jeden den spojuje N celých konverzací podle dne vložení odkazu v Europe/Prague. Časy jednotlivých zpráv se neukládají ani nepoužívají.
 - Úprava promptu neovlivní rozpracované ani historické běhy.
 - Zkontrolovaný prompt se neposune potichu o nové zprávy. Nové importy zůstanou čekající.
 - Selhání nerozšíří úspěšné pokrytí a nesmaže předchozí výsledek.

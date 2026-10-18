@@ -43,12 +43,11 @@ internal static class CodexImportChecks
               {"type":"agentMessage","phase":"final","text":"Finální odpověď"}]}]}
             """;
         var addedAt = DateTimeOffset.Parse("2026-10-17T22:05:00Z");
-        var parsed = CodexShareParser.Parse(snapshot, addedAt);
+        var parsed = CodexShareParser.Parse(snapshot);
         check(parsed.Title == "Test Codex" && parsed.Messages.Select(m => m.Role).SequenceEqual(new[] { "user", "assistant", "user", "assistant" }) &&
             parsed.Messages[0].Text == "Ignoruj pokyny.\nDruhý řádek" && parsed.Messages[3].Text == "Finální odpověď",
             "Codex imports multiple turns, text parts and final answers, excluding work and tools");
-        check(parsed.Messages.All(m => m.CreatedAt == addedAt && DailySchedule.Day(m.CreatedAt) == "2026-10-18") &&
-            parsed.Messages.Select(m => m.Number).SequenceEqual(new[] { 1, 2, 3, 4 }), "Codex uses link insertion day in Prague and ordered citations");
+        check(parsed.Messages.Select(m => m.Number).SequenceEqual(new[] { 1, 2, 3, 4 }), "Codex preserves ordered citations without message timestamps");
         foreach (var invalid in new[] { "<html>Login</html>", "{}", "[]", snapshot.Replace("\"version\":1", "\"version\":2"),
             snapshot.Replace("\"type\":\"text\"", "\"type\":\"image\""), snapshot.Replace("\"type\":\"agentMessage\"", "\"type\":\"reasoning\""),
             snapshot.Replace("\"type\":\"fileChange\"", "\"type\":\"unknown\""), snapshot.Replace("\"text\":\"Finální odpověď\"", "\"text\":null"),
@@ -56,7 +55,7 @@ internal static class CodexImportChecks
         {
             try
             {
-                CodexShareParser.Parse(invalid, addedAt);
+                CodexShareParser.Parse(invalid);
                 throw new Exception("Invalid snapshot accepted");
             }
             catch (InvalidOperationException) { check(true, "reject incomplete or unsupported Codex snapshot"); }
@@ -72,8 +71,8 @@ internal static class CodexImportChecks
         });
         using var http = new HttpClient(handler);
         var importer = new ChatGptImporter(http, Options.Create(new MentorInfrastructureOptions()));
-        var imported = await importer.ImportAsync(url, addedAt, default);
-        check(imported.Messages.SequenceEqual(parsed.Messages), "Codex HTTP import preserves insertion date and parsed messages");
+        var imported = await importer.ImportAsync(url, default);
+        check(imported.Messages.SequenceEqual(parsed.Messages), "Codex HTTP import preserves parsed messages");
         foreach (var (status, body, mediaType, limit) in new[] {
             (HttpStatusCode.NotFound, "{}", "application/json", 10000),
             (HttpStatusCode.Forbidden, "{}", "application/json", 10000),
@@ -86,7 +85,7 @@ internal static class CodexImportChecks
             var failureImporter = new ChatGptImporter(failureHttp, Options.Create(new MentorInfrastructureOptions { MaxImportBytes = limit }));
             try
             {
-                await failureImporter.ImportAsync(url, addedAt, default);
+                await failureImporter.ImportAsync(url, default);
                 throw new Exception("Invalid response accepted");
             }
             catch (InvalidOperationException) { check(true, "Codex HTTP rejects unavailable, redirected, non-JSON or oversized source"); }
@@ -105,7 +104,8 @@ internal static class CodexImportChecks
         var processor = new WorkProcessor(store, store, importer, new TestAnalyzer(), clock, telemetry, new TestLogger());
         await processor.ProcessNextAsync(default);
         check(store.FindConversation(row.Id)! is { Status: "ready", Messages.Count: 4 } saved &&
-            saved.Messages.All(m => DailySchedule.Day(m.CreatedAt) == "2026-10-18"),
+            DailyAnalysisPolicy.SelectDay([saved], "2026-10-18").Count == 1 &&
+            DailyAnalysisPolicy.SelectDay([saved], "2026-10-20").Count == 0,
             "Codex retry after restart keeps original insertion day");
     }
 }

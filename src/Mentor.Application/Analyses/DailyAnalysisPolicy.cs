@@ -14,8 +14,7 @@ public static class DailyAnalysisPolicy
     }
 
     public static List<Conversation> SelectDay(IEnumerable<Conversation> conversations, string day) => conversations
-        .Where(c => c.Status == "ready")
-        .Select(c => c with { Messages = c.Messages.Where(m => DailySchedule.Day(m.CreatedAt) == day).ToList() })
+        .Where(c => c.Status == "ready" && DailySchedule.Day(DateTimeOffset.Parse(c.CreatedAt, CultureInfo.InvariantCulture)) == day)
         .Where(c => c.Messages.Count > 0)
         .OrderBy(c => c.Id)
         .ToList();

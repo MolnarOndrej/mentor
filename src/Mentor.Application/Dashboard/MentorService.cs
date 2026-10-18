@@ -21,12 +21,15 @@ public sealed class MentorService(
             .GroupBy(a => a.Day)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.Id).First().MessageKeys.ToHashSet());
 
-        var summaries = conversations.Conversations().Select(c => new ConversationSummary(
-            c.Id, c.Url, c.Title, c.Status, c.Error, c.CreatedAt, c.ImportedAt, c.Messages.Count,
-            c.Messages.GroupBy(m => DailySchedule.Day(m.CreatedAt)).OrderByDescending(g => g.Key)
-                .Select(g => new DayCoverage(g.Key, g.Count(), g.Count(m =>
-                    coverage.TryGetValue(g.Key, out var keys) && keys.Contains(DailyAnalysisPolicy.MessageKey(c.Id, m)))))
-                .ToList())).ToList();
+        var summaries = conversations.Conversations().Select(c =>
+        {
+            var day = DailySchedule.Day(DateTimeOffset.Parse(c.CreatedAt));
+            return new ConversationSummary(
+                c.Id, c.Url, c.Title, c.Status, c.Error, c.CreatedAt, c.ImportedAt, c.Messages.Count,
+                c.Messages.Count == 0 ? [] : [new DayCoverage(day, c.Messages.Count,
+                    c.Messages.Count(m => coverage.TryGetValue(day, out var keys) &&
+                        keys.Contains(DailyAnalysisPolicy.MessageKey(c.Id, m))))]);
+        }).ToList();
 
         return new(summaries, reports.Select(a => new AnalysisSummary(
             a.Id, a.Status, a.Trigger, a.CreatedAt, a.CompletedAt, a.Day, a.ConversationIds,

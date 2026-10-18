@@ -23,7 +23,7 @@ internal static class ApplicationChecks
         var directory = Path.Combine(Path.GetTempPath(), "mentor-application-" + Guid.NewGuid());
         var repository = TestRepository.Create(Path.Combine(directory, "mentor.db"),
             "Editable instructions, SENSITIVE_PROMPT\n{{data}}", clock);
-        var importer = new TestImporter(clock);
+        var importer = new TestImporter();
         var analyzer = new TestAnalyzer();
         var logger = new TestLogger();
         var completedActivities = new List<Activity>();

@@ -62,12 +62,7 @@ public static partial class ChatGptShareParser
                             throw new InvalidOperationException("Některé části zpráv nejsou textové; import byl zastaven.");
                         var text = string.Join("\n", texts);
                         if (!string.IsNullOrWhiteSpace(text))
-                        {
-                            var time = Property(message, "create_time");
-                            if (time.ValueKind != JsonValueKind.Number || !time.TryGetDouble(out var seconds) || !double.IsFinite(seconds) || seconds < 0 || seconds > 253402300799)
-                                throw new InvalidOperationException("Zprávě chybí spolehlivé datum vytvoření. Nelze ji přiřadit k dennímu rozboru.");
-                            messages.Add(new(role, text, DateTimeOffset.FromUnixTimeMilliseconds((long)(seconds * 1000)), messages.Count + 1));
-                        }
+                            messages.Add(new(role, text, messages.Count + 1));
                     }
                     if (!messages.Any(x => x.Role == "user") || !messages.Any(x => x.Role == "assistant"))
                         throw new InvalidOperationException("Nepodařilo se získat uživatelské zprávy i odpovědi AI. Import nelze považovat za úplný.");
