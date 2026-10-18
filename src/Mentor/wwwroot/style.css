@@ -297,6 +297,9 @@ dialog::backdrop {
   max-width: min(440px, calc(100% - 32px));
   padding: 24px;
 }
+#delete-conversation-dialog .actions {
+  justify-content: center;
+}
 #delete-conversation-description {
   margin: 0 0 20px;
   font-size: 18px;
