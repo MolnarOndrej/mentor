@@ -53,6 +53,7 @@ function configurePolling(seconds) {
 function dayRows(day) {
   return state.conversations
     .filter((c) => c.days.some((d) => d.day === day))
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id - b.id)
     .map((c) => ({ ...c, coverage: c.days.find((d) => d.day === day) }));
 }
 function totals(day) {
@@ -141,7 +142,7 @@ function renderConversationActions() {
 function conversationCard(c, day, editable = false) {
   const card = el('div', undefined, 'card');
   const heading = el('div', undefined, 'conversation-heading');
-  heading.append(button(`#${c.id} · ${c.title}`, () => showConversation(c.id, day), 'link-button'));
+  heading.append(button(c.title, () => showConversation(c.id, day), 'link-button'));
   if (editable) heading.append(conversationActions(c));
   card.append(heading);
   const meta = el('div', undefined, 'meta');
@@ -239,8 +240,7 @@ async function renderCurrent(day) {
   $('day-conversations').hidden = !totalsForDay.conversations;
   const list = $('current-conversations');
   list.replaceChildren();
-  for (const c of dayRows(day).sort((a, b) => b.id - a.id))
-    list.append(conversationCard(c, day, day === state.today));
+  for (const c of dayRows(day)) list.append(conversationCard(c, day, day === state.today));
 }
 function renderArchive(days) {
   const archive = $('archive');
@@ -267,8 +267,7 @@ function renderArchive(days) {
       button('Otevřít denní rozbor', () => selectDay(day)),
       el('p', 'Konverzace', 'hint')
     );
-    for (const c of dayRows(day).sort((a, b) => b.id - a.id))
-      group.append(conversationCard(c, day));
+    for (const c of dayRows(day)) group.append(conversationCard(c, day));
     archive.append(group);
   }
   if (!days.length) archive.append(el('p', 'Zde budou přibývat jednotlivé dny.', 'empty'));
