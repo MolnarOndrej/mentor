@@ -40,5 +40,3 @@ app.UseStaticFiles();
 app.MapMentorApi();
 app.MapMentorOperations();
 app.Run();
-
-public partial class Program;

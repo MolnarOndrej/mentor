@@ -1,5 +1,4 @@
 using System.Diagnostics.Metrics;
-using Mentor.Application.Analyses;
 using Mentor.Application.Diagnostics;
 using Mentor.Hosting;
 

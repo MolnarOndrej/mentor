@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Mentor.Application.Conversations;
 using OpenTelemetry;
 
 namespace Mentor.Observability;

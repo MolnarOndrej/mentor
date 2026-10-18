@@ -1,5 +1,3 @@
-using Mentor.Application.Conversations;
-
 namespace Mentor.Checks.Persistence;
 
 internal static class SmokeData

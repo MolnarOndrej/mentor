@@ -1,5 +1,4 @@
 using Mentor.Application.Analyses;
-using Mentor.Application.Configuration;
 using Mentor.Application.Conversations;
 
 namespace Mentor.Checks.Persistence;

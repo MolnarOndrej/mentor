@@ -1,8 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Mentor.Application.Analyses;
-using Mentor.Application.Configuration;
-using Mentor.Application.Conversations;
 using Mentor.Application.Dashboard;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Processing;
@@ -13,7 +11,6 @@ using Mentor.Infrastructure.Configuration;
 using Mentor.Observability;
 using Mentor.Observability.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Mentor.Checks.Application;

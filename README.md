@@ -48,7 +48,7 @@ Volitelné proměnné prostředí:
 
 Analýza předává vybrané zprávy dne a upravené zadání přihlášenému Codex CLI, které komunikuje se službou OpenAI; nejde o offline model. Aplikace nevolá modelové API přímo. Limit importní stránky je 8 MB, zadání 20 000 znaků, celého vstupu CLI 240 000 znaků a běhu CLI 10 minut. Nadlimitní dávka skončí chybou bez tichého zkrácení či označení zpráv za zpracované.
 
-Soubor `prompts/mentor.txt` slouží pouze k prvnímu naplnění nové databáze. Existující zadání se z něj při restartu neobnovuje. `AnalysisPrompt.cs` jen dosazuje data do databázové šablony a kontroluje její formát; neobsahuje textové konstanty instrukcí.
+Soubor `prompts/defaultMentorPrompt.txt` slouží pouze k prvnímu naplnění nové databáze. Existující zadání se z něj při restartu neobnovuje. `AnalysisPrompt.cs` jen dosazuje data do databázové šablony a kontroluje její formát; neobsahuje textové konstanty instrukcí.
 
 ## Codex CLI a spolehlivost
 

@@ -41,7 +41,7 @@ public static class DependencyInjection
         {
             _ = provider.GetRequiredService<WorkspaceLease>();
             return new EfMentorRepository(provider.GetRequiredService<IDbContextFactory<MentorDbContext>>(),
-                File.ReadAllText(Path.Combine(contentRoot, "prompts", "mentor.txt")),
+                File.ReadAllText(Path.Combine(contentRoot, "prompts", "defaultMentorPrompt.txt")),
                 provider.GetRequiredService<TimeProvider>());
         });
         services.AddSingleton<IConversationRepository>(p => p.GetRequiredService<EfMentorRepository>());

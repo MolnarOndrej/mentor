@@ -13,3 +13,10 @@ do souboru jiného typu jako vnořené deklarace.
 Soubory seskupujte podle domény nebo funkce (například Conversations, Analyses,
 Prompts, Configuration, Processing, Diagnostics), ne do společných souborů
 Models.cs nebo Ports.cs. Namespace odpovídá projektu a složce.
+
+# Git workflow
+
+Změny integrujte do `master` pomocí squash a přímého push bez PR, i když ochrana
+větve v GitHubu vyžaduje PR. Změny připravené přímo na `master` uložte jako jeden
+commit. Uživatel dne 2026-10-18 uvedl, že jeho účet má dočasnou výjimku pro force
+push; tato výjimka sama o sobě neznamená, že je nutné přepisovat historii.

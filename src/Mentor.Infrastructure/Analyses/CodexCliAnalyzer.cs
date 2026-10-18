@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text;
 using Mentor.Application.Analyses;
-using Mentor.Application.Configuration;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Prompts;
 using Mentor.Infrastructure.Configuration;

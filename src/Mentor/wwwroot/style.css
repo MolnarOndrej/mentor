@@ -37,12 +37,6 @@ nav {
 header h1 {
   margin: 0;
 }
-.eyebrow {
-  font-size: 10px;
-  letter-spacing: 2px;
-  font-weight: 700;
-  color: #657b70;
-}
 h1 {
   font:
     54px/1.1 Georgia,
@@ -51,17 +45,6 @@ h1 {
 }
 h1 span {
   color: #b36b3d;
-}
-header p {
-  color: #65706a;
-  margin: 10px 0;
-}
-.local {
-  border: 1px solid #d1d9cc;
-  border-radius: 24px;
-  padding: 7px 14px;
-  font-size: 12px;
-  white-space: nowrap;
 }
 section {
   background: #fffefa;
@@ -86,14 +69,12 @@ h3 {
 p {
   margin: 9px 0;
 }
-.hint,
-footer {
+.hint {
   font-size: 13px;
   color: #69766e;
 }
 .input-row,
-.actions,
-.day-actions {
+.actions {
   display: flex;
   gap: 10px;
   align-items: center;
@@ -101,19 +82,6 @@ footer {
 }
 .input-row {
   flex-wrap: nowrap;
-}
-.day-actions label {
-  font-size: 12px;
-  margin: 0;
-}
-.day-actions input {
-  width: auto;
-}
-.day-actions {
-  justify-content: flex-end;
-}
-.day-actions button {
-  flex-basis: 100%;
 }
 label {
   display: block;
@@ -174,12 +142,6 @@ button:disabled {
   background: none;
   text-decoration: underline;
 }
-.stats {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 20px 0;
-}
 .stat {
   font-size: 13px;
   border: 1px solid #dde1d6;
@@ -190,10 +152,6 @@ button:disabled {
 .pending {
   color: #7f5a18;
   background: #fbf2dc;
-}
-.done {
-  color: #356442;
-  background: #edf4e9;
 }
 .badge {
   display: inline-block;
@@ -272,20 +230,11 @@ details[open] > summary {
 .formatted li {
   margin-bottom: 12px;
 }
-.result {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: 14px;
-}
 #notice:not(:empty) {
   padding: 12px 17px;
   background: #e7eddf;
   border-radius: 8px;
   margin-bottom: 18px;
-}
-footer {
-  margin: 20px 0;
-  max-width: 850px;
 }
 dialog {
   border: 1px solid #cbd4c8;
@@ -378,9 +327,6 @@ dialog::backdrop {
   .formatted {
     font-size: 14px;
   }
-  .stats {
-    gap: 6px;
-  }
   .stat {
     padding: 6px 10px;
   }
@@ -402,16 +348,6 @@ dialog::backdrop {
   color: #273b36;
 }
 
-.prompt-context {
-  font:
-    12px/1.6 Consolas,
-    monospace;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  max-height: 260px;
-  overflow: auto;
-  margin: 14px 0;
-}
 .sr-only {
   position: absolute;
   width: 1px;

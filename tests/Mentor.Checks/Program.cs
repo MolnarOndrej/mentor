@@ -1,7 +1,5 @@
 using System.Text.Json;
 using Mentor.Application.Analyses;
-using Mentor.Application.Configuration;
-using Mentor.Application.Conversations;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Prompts;
 using Mentor.Checks.Application;
@@ -9,7 +7,6 @@ using Mentor.Checks.Persistence;
 using Mentor.Infrastructure.Analyses;
 using Mentor.Infrastructure.Configuration;
 using Mentor.Infrastructure.Conversations;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 // Also acts as a deterministic CLI process for testing process failures and JSONL handling.
@@ -160,7 +157,7 @@ var editedTemplate = AnalysisPrompt.Template(edited, AnalysisPrompt.Data(input))
 store.SavePrompt(editedTemplate);
 store = TestRepository.Create(Path.Combine(path, "test.db"), "DIFFERENT INITIAL TEXT\n{{data}}", TimeProvider.System);
 Check(store.Settings().Prompt == editedTemplate, "database prompt overrides initialization text on restart");
-var shown = store.Preview(day, editedTemplate);
+var shown = new AnalysisInput(day, editedTemplate, DailyAnalysisPolicy.SelectDay(store.Conversations(), day));
 var shownText = AnalysisPrompt.Build(shown);
 var exactId = store.EnqueueAnalysis("manual", day, editedTemplate, AnalysisPrompt.Data(shown));
 var fourth = store.Add(url[..^1] + "4").Conversation;

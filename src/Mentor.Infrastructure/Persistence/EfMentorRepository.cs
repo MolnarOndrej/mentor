@@ -4,7 +4,6 @@ using Mentor.Application.Conversations;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Processing;
 using Mentor.Application.Prompts;
-using Mentor.Infrastructure.Hosting;
 using Mentor.Infrastructure.Persistence.Analyses;
 using Mentor.Infrastructure.Persistence.Configuration;
 using Mentor.Infrastructure.Persistence.Conversations;
@@ -237,12 +236,6 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         entity.Error = error;
         entity.CompletedAt = Now();
     });
-
-    public AnalysisInput Preview(string day, string prompt)
-    {
-        ValidateDay(day);
-        return Read(db => new AnalysisInput(day, prompt, SelectDay(ReadConversations(db), day)));
-    }
 
     public void Probe() => Read(db =>
     {
