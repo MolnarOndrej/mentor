@@ -78,6 +78,7 @@ Check(ChatGptShareParser.Parse("streamController.enqueue(" + JsonSerializer.Seri
 table[timeKey] = "create_time";
 await CodexImportChecks.RunAsync(Check);
 await RefreshChecks.RunAsync(Check);
+await SourceAvailabilityChecks.RunAsync(Check);
 InsertionDayChecks.Run(Check);
 await RuntimeSettingsChecks.RunAsync(Check);
 if (args.FirstOrDefault() is "--codex-share" or "--codex-url")

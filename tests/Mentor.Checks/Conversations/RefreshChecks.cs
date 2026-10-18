@@ -51,6 +51,11 @@ internal static class RefreshChecks
         result = await service.RefreshConversationAsync(second, default);
         check(result.Updated && repository.FindConversation(second)!.Messages.Count == 3,
             "manual refresh updates only the selected conversation");
+        var unchanged = System.Text.Json.JsonSerializer.Serialize(repository.FindConversation(second));
+        result = await service.RefreshConversationAsync(second, default);
+        check(!result.Updated && result.Message.Contains("beze změn") &&
+            unchanged == System.Text.Json.JsonSerializer.Serialize(repository.FindConversation(second)),
+            "unchanged source does not report an update or modify persisted data");
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         try

@@ -80,7 +80,7 @@ function conversationCard(c, day, editable = false) {
     for (const [label, path, action] of [
       [
         'Aktualizovat konverzaci',
-        'M20 7v5h-5 M4 17v-5h5 M6.1 7a7 7 0 0 1 11.6-2L20 8 M4 16l2.3 3A7 7 0 0 0 18 17',
+        'M20 4v6h-6 M20 10a8 8 0 1 0-2 8',
         async () => {
           const result = await api(`conversations/${c.id}/refresh`, 'POST');
           notice(result.message);

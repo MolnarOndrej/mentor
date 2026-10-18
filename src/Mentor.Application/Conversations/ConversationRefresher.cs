@@ -18,10 +18,12 @@ public sealed class ConversationRefresher(IConversationRepository conversations,
             data = await importer.ImportAsync(conversation.Url, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-        catch (Exception)
+        catch (Exception error)
         {
-            return new(false, "Odkaz není platný nebo dostupný. Ponechána poslední uložená data.");
+            return new(false, $"Aktualizace se nezdařila. {error.Message} Uložená data zůstala beze změny.");
         }
+        if (conversation.Status == "ready" && conversation.Title == data.Title && conversation.Messages.SequenceEqual(data.Messages))
+            return new(false, "Konverzace je beze změn. Nebyly nalezeny žádné nové údaje.");
         return conversations.RefreshToday(id, data)
             ? new(true, "Konverzace byla aktualizována.")
             : new(false, "Konverzace již není dostupná pro aktualizaci.");

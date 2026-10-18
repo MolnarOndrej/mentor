@@ -63,6 +63,12 @@ internal static class CodexImportChecks
         }
         using var handler = new ImportHttpHandler(request =>
         {
+            check(request.Headers.CacheControl is { NoCache: true, NoStore: true }, "source requests bypass cached responses");
+            if (request.RequestUri?.AbsoluteUri == url)
+                return new(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("<html>Shared conversation</html>", Encoding.UTF8, "text/html")
+                };
             check(request.RequestUri?.AbsoluteUri == "https://chatgpt.com/backend-api/wham/shared_threads/cx_00000000000000000000000000000001",
                 "Codex importer uses public JSON endpoint");
             return new(HttpStatusCode.OK)
