@@ -10,10 +10,10 @@ export function analysisControl(state, day) {
 
   const coverage = (state?.conversations || []).flatMap((c) => c.days.filter((d) => d.day === day));
   const messages = coverage.reduce((sum, d) => sum + d.messageCount, 0);
-  const analyzed = coverage.reduce((sum, d) => sum + d.analyzedCount, 0);
-  if (!messages) return { enabled: false, status: 'empty', label: 'Nejsou zprávy k rozboru' };
-  if (analyzed >= messages && day !== state.today)
-    return { enabled: false, status: 'completed', label: 'Rozbor je aktuální' };
+  const changed = state?.changedDays?.includes(day) || false;
+  if (!messages && !changed)
+    return { enabled: false, status: 'empty', label: 'Nejsou zprávy k rozboru' };
+  if (!changed) return { enabled: false, status: 'completed', label: 'Rozbor je aktuální' };
   return {
     enabled: true,
     status: 'ready',

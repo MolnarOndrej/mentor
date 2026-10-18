@@ -29,17 +29,19 @@ public sealed class ConversationRefresher(IConversationRepository conversations,
             : new(false, "Konverzace již není dostupná pro aktualizaci.");
     }
 
-    public async Task RefreshDayAsync(string day, CancellationToken cancellationToken)
+    public async Task<List<RefreshConversationResult>> RefreshDayAsync(string day, CancellationToken cancellationToken)
     {
+        var results = new List<RefreshConversationResult>();
         if (day != DailySchedule.Day(clock.GetUtcNow()))
-            return;
+            return results;
         foreach (var conversation in conversations.Conversations().Where(c =>
             DailySchedule.Day(DateTimeOffset.Parse(c.CreatedAt)) == day))
         {
             cancellationToken.ThrowIfCancellationRequested();
             // A conversation may have been deleted while the preceding link was loading.
             if (conversations.FindConversation(conversation.Id) != null)
-                await RefreshAsync(conversation.Id, cancellationToken);
+                results.Add(await RefreshAsync(conversation.Id, cancellationToken));
         }
+        return results;
     }
 }

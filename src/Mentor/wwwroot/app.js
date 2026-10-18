@@ -36,6 +36,7 @@ let state,
   initialized = false,
   lastRender = '',
   refreshing = false;
+let updatingConversations = false;
 const promptEditor = new PromptEditor();
 const reportCache = new Map();
 let pollTimer, pollInterval;
@@ -62,7 +63,19 @@ function totals(day) {
   };
 }
 function canAnalyze(day) {
-  return analysisControl(state, day).enabled;
+  return !updatingConversations && analysisControl(state, day).enabled;
+}
+function confirmDelete(c) {
+  const dialog = $('delete-conversation-dialog');
+  $('delete-conversation-description').textContent =
+    `Opravdu chcete odstranit konverzaci „${c.title}“?`;
+  dialog.returnValue = '';
+  return new Promise((resolve) => {
+    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'delete'), {
+      once: true,
+    });
+    dialog.showModal();
+  });
 }
 function selectDay(day) {
   selectedDay = day;
@@ -82,14 +95,23 @@ function conversationCard(c, day, editable = false) {
         'Aktualizovat konverzaci',
         'M20 4v6h-6 M20 10a8 8 0 1 0-2 8',
         async () => {
-          const result = await api(`conversations/${c.id}/refresh`, 'POST');
-          notice(result.message);
+          updatingConversations = true;
+          $('analyze').disabled = true;
+          $('refresh-today').disabled = true;
+          try {
+            const result = await api(`conversations/${c.id}/refresh`, 'POST');
+            notice(result.message);
+          } finally {
+            updatingConversations = false;
+            await refresh(true);
+          }
         },
       ],
       [
         'Smazat konverzaci',
         'M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7',
         async () => {
+          if (!(await confirmDelete(c))) return;
           await api(`conversations/${c.id}`, 'DELETE');
           notice('Konverzace byla smazána.');
         },
@@ -97,6 +119,7 @@ function conversationCard(c, day, editable = false) {
     ]) {
       const control = button('', action, 'secondary conversation-action');
       control.title = label;
+      control.disabled = updatingConversations;
       control.setAttribute('aria-label', label);
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('viewBox', '0 0 24 24');
@@ -157,8 +180,7 @@ async function fillAttempt(container, a) {
   container.append(details);
 }
 async function renderCurrent(day) {
-  const totalsForDay = totals(day),
-    pending = totalsForDay.messages - totalsForDay.analyzed;
+  const totalsForDay = totals(day);
   $('day').value = day;
   $('report-heading').textContent =
     day === state.today ? 'Dnešní rozbor' : `Rozbor · ${dayLabel(day)}`;
@@ -166,10 +188,13 @@ async function renderCurrent(day) {
   $('back-today').hidden = day === state.today;
   const attempts = state.analyses.filter((a) => a.day === day).sort((a, b) => b.id - a.id),
     latest = attempts[0],
-    success = attempts.find((a) => a.status === 'completed' && a.messageCount > 0);
+    success = attempts.find((a) => a.status === 'completed');
   const active = attempts.find((a) => ['queued', 'running'].includes(a.status));
   const control = analysisControl(state, day);
-  $('analyze').disabled = !control.enabled;
+  $('analyze').disabled = !canAnalyze(day);
+  $('refresh-today').hidden = day !== state.today;
+  $('refresh-today').disabled = updatingConversations || !!active || !dayRows(day).length;
+  $('refresh-today').setAttribute('aria-busy', String(updatingConversations));
   $('analyze').dataset.status = control.status;
   $('analyze').setAttribute('aria-label', control.label);
   $('analyze').title = control.label;
@@ -195,7 +220,8 @@ async function renderCurrent(day) {
     const content = el('div');
     report.append(content);
     await fillAttempt(content, success);
-    if (pending) report.append(el('p', 'Přibyly nové zprávy. Rozbor můžete aktualizovat.', 'hint'));
+    if (state.changedDays.includes(day))
+      report.append(el('p', 'Konverzace se změnily. Rozbor můžete aktualizovat.', 'hint'));
   } else if (!active && !totalsForDay.messages)
     report.append(el('p', 'Pro tento den zatím nejsou žádné zprávy.', 'empty'));
   $('day-conversations-heading').textContent = `Konverzace (${totalsForDay.conversations})`;
@@ -257,7 +283,13 @@ async function refresh(force = false) {
       .sort()
       .reverse();
     const day = selectedDay || state.today;
-    const signature = JSON.stringify([day, state.conversations, state.analyses]);
+    const signature = JSON.stringify([
+      day,
+      state.conversations,
+      state.analyses,
+      state.changedDays,
+      updatingConversations,
+    ]);
     if (signature === lastRender && !force) return;
     const open = new Set(
       [...document.querySelectorAll('details[data-key][open]')].map((e) => e.dataset.key)
@@ -268,7 +300,7 @@ async function refresh(force = false) {
       if (open.has(d.dataset.key)) d.open = true;
     const imports = $('import-status');
     imports.replaceChildren();
-    const waitingDays = days.filter((d) => totals(d).messages > totals(d).analyzed);
+    const waitingDays = state.changedDays;
     $('archive-pending-count').textContent = waitingDays.length;
     $('archive-pending-count').hidden = !waitingDays.length;
     const archiveLabel = waitingDays.length
@@ -369,6 +401,21 @@ $('analyze').onclick = async () => {
     notice(e.message);
   } finally {
     b.disabled = !canAnalyze(selectedDay || state?.today);
+  }
+};
+$('refresh-today').onclick = async () => {
+  updatingConversations = true;
+  $('refresh-today').disabled = true;
+  $('analyze').disabled = true;
+  try {
+    const result = await api('conversations/refresh-today', 'POST');
+    const summary = `Zkontrolováno konverzací: ${result.checkedCount}. Aktualizováno: ${result.updatedCount}.`;
+    notice([summary, ...new Set(result.messages)].join(' '));
+  } catch (error) {
+    notice(error.message);
+  } finally {
+    updatingConversations = false;
+    await refresh(true);
   }
 };
 refresh().catch((e) => notice(e.message));

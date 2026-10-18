@@ -18,6 +18,8 @@ public static class MentorEndpoints
             service.GetConversation(id) is { } row ? Results.Ok(row) : Results.NotFound());
         api.MapPost("/conversations", (AddConversationRequest request, MentorService service) =>
             service.AddConversation(request.Url));
+        api.MapPost("/conversations/refresh-today", (MentorService service, CancellationToken cancellationToken) =>
+            service.RefreshTodayAsync(cancellationToken));
         api.MapPost("/conversations/{id:long}/refresh", (long id, MentorService service, CancellationToken cancellationToken) =>
             service.RefreshConversationAsync(id, cancellationToken));
         api.MapDelete("/conversations/{id:long}", (long id, MentorService service) =>

@@ -3,6 +3,7 @@ using Mentor.Application.Analyses;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Prompts;
 using Mentor.Checks.Application;
+using Mentor.Checks.Analyses;
 using Mentor.Checks.Conversations;
 using Mentor.Checks.Persistence;
 using Mentor.Checks.TestDoubles;
@@ -79,6 +80,7 @@ table[timeKey] = "create_time";
 await CodexImportChecks.RunAsync(Check);
 await RefreshChecks.RunAsync(Check);
 await SourceAvailabilityChecks.RunAsync(Check);
+await AnalysisChangeChecks.RunAsync(Check);
 InsertionDayChecks.Run(Check);
 await RuntimeSettingsChecks.RunAsync(Check);
 if (args.FirstOrDefault() is "--codex-share" or "--codex-url")

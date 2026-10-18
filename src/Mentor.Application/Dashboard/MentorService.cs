@@ -22,7 +22,8 @@ public sealed class MentorService(
             .GroupBy(a => a.Day)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.Id).First().MessageKeys.ToHashSet());
 
-        var summaries = conversations.Conversations().Select(c =>
+        var stored = conversations.Conversations();
+        var summaries = stored.Select(c =>
         {
             var day = DailySchedule.Day(DateTimeOffset.Parse(c.CreatedAt));
             return new ConversationSummary(
@@ -32,15 +33,30 @@ public sealed class MentorService(
                         keys.Contains(DailyAnalysisPolicy.MessageKey(c.Id, m))))]);
         }).ToList();
 
+        var changedDays = summaries.SelectMany(c => c.Days.Select(d => d.Day)).Concat(reports.Select(a => a.Day))
+            .Distinct().Where(day =>
+            {
+                var latest = reports.Where(a => a.Day == day && a.Status == "completed").MaxBy(a => a.Id);
+                var batch = DailyAnalysisPolicy.SelectDay(stored, day);
+                return latest == null ? batch.Count > 0 : analyses.FullPrompt(latest.Id) !=
+                    AnalysisPrompt.Build(new AnalysisInput(day, latest.Prompt, batch));
+            }).ToList();
+
         return new(summaries, reports.Select(a => new AnalysisSummary(
             a.Id, a.Status, a.Trigger, a.CreatedAt, a.CompletedAt, a.Day, a.ConversationIds,
-            a.MessageKeys.Count, a.Error)).ToList(), settings.Settings(), DailySchedule.Day(clock.GetUtcNow()), TimeZoneInfo.Local.Id);
+            a.MessageKeys.Count, a.Error)).ToList(), settings.Settings(), DailySchedule.Day(clock.GetUtcNow()), TimeZoneInfo.Local.Id, changedDays);
     }
 
     public Conversation? GetConversation(long id) => conversations.FindConversation(id);
     public Analysis? GetAnalysis(long id) => analyses.FindAnalysis(id);
     public Task<RefreshConversationResult> RefreshConversationAsync(long id, CancellationToken cancellationToken) =>
         refresher.RefreshAsync(id, cancellationToken);
+
+    public async Task<RefreshDayResult> RefreshTodayAsync(CancellationToken cancellationToken)
+    {
+        var results = await refresher.RefreshDayAsync(DailySchedule.Day(clock.GetUtcNow()), cancellationToken);
+        return new(results.Count, results.Count(r => r.Updated), results.Select(r => r.Message).ToList());
+    }
 
     public void DeleteConversation(long id)
     {

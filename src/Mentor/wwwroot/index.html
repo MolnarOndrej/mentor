@@ -77,6 +77,16 @@
           <div class="actions">
             <button id="back-today" class="secondary" hidden>Dnes</button
             ><button
+              id="refresh-today"
+              class="secondary icon-button"
+              aria-label="Aktualizovat konverzace"
+              title="Aktualizovat konverzace"
+              disabled
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M20 4v6h-6 M20 10a8 8 0 1 0-2 8" />
+              </svg></button
+            ><button
               id="analyze"
               class="icon-button"
               aria-label="Analyzovat"
@@ -98,6 +108,21 @@
         </details>
       </section>
     </main>
+    <dialog
+      id="delete-conversation-dialog"
+      aria-labelledby="delete-conversation-heading"
+      aria-describedby="delete-conversation-description"
+    >
+      <h2 id="delete-conversation-heading">Odstranit konverzaci?</h2>
+      <p id="delete-conversation-description"></p>
+      <p class="hint">
+        Konverzace bude odstraněna z Mentoru i databáze. Tuto akci nelze vrátit zpět.
+      </p>
+      <form method="dialog" class="actions">
+        <button value="cancel" class="secondary" autofocus>Zrušit</button>
+        <button value="delete">Odstranit</button>
+      </form>
+    </dialog>
     <dialog id="runtime-settings-dialog" aria-labelledby="runtime-settings-heading">
       <button id="close-runtime-settings" class="close" aria-label="Zavřít" title="Zavřít">
         ×
