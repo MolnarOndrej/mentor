@@ -158,9 +158,16 @@
       <p id="archive-count" class="hint"></p>
       <div id="archive"></div>
     </dialog>
-    <dialog id="conversation-dialog">
-      <button id="close-conversation" class="close" aria-label="Zavřít" title="Zavřít">×</button>
-      <h2 id="conversation-title"></h2>
+    <dialog id="conversation-dialog" aria-labelledby="conversation-title">
+      <div class="conversation-dialog-heading">
+        <h2 id="conversation-title"></h2>
+        <div class="conversation-dialog-controls">
+          <div id="conversation-dialog-actions"></div>
+          <button id="close-conversation" class="close" aria-label="Zavřít" title="Zavřít">
+            ×
+          </button>
+        </div>
+      </div>
       <div id="conversation-content"></div>
     </dialog>
     <dialog id="prompt-dialog">

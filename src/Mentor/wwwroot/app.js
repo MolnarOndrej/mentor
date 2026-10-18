@@ -37,6 +37,7 @@ let state,
   lastRender = '',
   refreshing = false;
 let updatingConversations = false;
+let openConversation = null;
 const promptEditor = new PromptEditor();
 const reportCache = new Map();
 let pollTimer, pollInterval;
@@ -84,54 +85,64 @@ function selectDay(day) {
   refresh(true);
   $('report-heading').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+function conversationActions(c) {
+  const actions = el('div', undefined, 'actions conversation-actions');
+  for (const [label, path, action] of [
+    [
+      'Aktualizovat konverzaci',
+      'M20 4v6h-6 M20 10a8 8 0 1 0-2 8',
+      async () => {
+        updatingConversations = true;
+        $('analyze').disabled = true;
+        $('refresh-today').disabled = true;
+        try {
+          const result = await api(`conversations/${c.id}/refresh`, 'POST');
+          notice(result.message);
+          if (openConversation?.conversation.id === c.id)
+            await showConversation(c.id, openConversation.day);
+        } finally {
+          updatingConversations = false;
+          await refresh(true);
+        }
+      },
+    ],
+    [
+      'Smazat konverzaci',
+      'M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7',
+      async () => {
+        if (!(await confirmDelete(c))) return;
+        await api(`conversations/${c.id}`, 'DELETE');
+        if (openConversation?.conversation.id === c.id) $('conversation-dialog').close();
+        notice('Konverzace byla smazána.');
+      },
+    ],
+  ]) {
+    const control = button('', action, 'secondary conversation-action');
+    control.title = label;
+    control.disabled = updatingConversations;
+    control.setAttribute('aria-label', label);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    shape.setAttribute('d', path);
+    svg.append(shape);
+    control.append(svg);
+    actions.append(control);
+  }
+  return actions;
+}
+function renderConversationActions() {
+  const actions = $('conversation-dialog-actions');
+  actions.replaceChildren();
+  if (openConversation?.day === state.today)
+    actions.append(conversationActions(openConversation.conversation));
+}
 function conversationCard(c, day, editable = false) {
   const card = el('div', undefined, 'card');
   const heading = el('div', undefined, 'conversation-heading');
-  heading.append(button(`#${c.id} · ${c.title}`, () => showConversation(c.id), 'link-button'));
-  if (editable) {
-    const actions = el('div', undefined, 'actions conversation-actions');
-    for (const [label, path, action] of [
-      [
-        'Aktualizovat konverzaci',
-        'M20 4v6h-6 M20 10a8 8 0 1 0-2 8',
-        async () => {
-          updatingConversations = true;
-          $('analyze').disabled = true;
-          $('refresh-today').disabled = true;
-          try {
-            const result = await api(`conversations/${c.id}/refresh`, 'POST');
-            notice(result.message);
-          } finally {
-            updatingConversations = false;
-            await refresh(true);
-          }
-        },
-      ],
-      [
-        'Smazat konverzaci',
-        'M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7',
-        async () => {
-          if (!(await confirmDelete(c))) return;
-          await api(`conversations/${c.id}`, 'DELETE');
-          notice('Konverzace byla smazána.');
-        },
-      ],
-    ]) {
-      const control = button('', action, 'secondary conversation-action');
-      control.title = label;
-      control.disabled = updatingConversations;
-      control.setAttribute('aria-label', label);
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('viewBox', '0 0 24 24');
-      svg.setAttribute('aria-hidden', 'true');
-      const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      shape.setAttribute('d', path);
-      svg.append(shape);
-      control.append(svg);
-      actions.append(control);
-    }
-    heading.append(actions);
-  }
+  heading.append(button(`#${c.id} · ${c.title}`, () => showConversation(c.id, day), 'link-button'));
+  if (editable) heading.append(conversationActions(c));
   card.append(heading);
   const meta = el('div', undefined, 'meta');
   if (c.status !== 'ready') meta.append(badge(c.status));
@@ -175,7 +186,7 @@ async function fillAttempt(container, a) {
   const tools = el('div', undefined, 'actions');
   tools.append(button('Odeslaný prompt', () => showPrompt(a.id), 'link-button'));
   for (const id of a.conversationIds)
-    tools.append(button(`Konverzace #${id}`, () => showConversation(id), 'link-button'));
+    tools.append(button(`Konverzace #${id}`, () => showConversation(id, a.day), 'link-button'));
   details.append(tools);
   container.append(details);
 }
@@ -272,6 +283,7 @@ async function refresh(force = false) {
       initialized = true;
     }
     state = next;
+    renderConversationActions();
     configurePolling(state.settings.runtime.pollIntervalSeconds);
     $('open-runtime-settings').disabled = false;
     const days = [
@@ -322,8 +334,10 @@ async function refresh(force = false) {
     refreshing = false;
   }
 }
-async function showConversation(id) {
+async function showConversation(id, day) {
   const c = await api('conversations/' + id);
+  openConversation = { conversation: c, day };
+  renderConversationActions();
   $('conversation-title').textContent = `#${c.id} · ${c.title}`;
   const content = $('conversation-content');
   content.replaceChildren();
@@ -339,6 +353,9 @@ async function showConversation(id) {
   if (!$('conversation-dialog').open) $('conversation-dialog').showModal();
 }
 $('close-conversation').onclick = () => $('conversation-dialog').close();
+$('conversation-dialog').addEventListener('close', () => {
+  openConversation = null;
+});
 $('close-prompt').onclick = () => $('prompt-dialog').close();
 $('open-settings').onclick = () => promptEditor.open($('day').value);
 $('open-runtime-settings').onclick = () => {
