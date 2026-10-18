@@ -3,6 +3,7 @@ using Mentor.Application.Configuration;
 using Mentor.Application.Dashboard;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Processing;
+using Mentor.Application.Prompts;
 using Mentor.Checks.Persistence;
 using Mentor.Checks.TestDoubles;
 
@@ -12,12 +13,16 @@ internal static class RuntimeSettingsChecks
 {
     public static async Task RunAsync(Action<bool, string> check)
     {
-        var clock = new TestClock(DateTimeOffset.Parse("2026-07-01T18:14:59Z"));
+        var clock = new TestClock(LocalTime.At("2026-07-01T20:14:59"));
         var path = Path.Combine(Path.GetTempPath(), "mentor-settings-" + Guid.NewGuid(), "mentor.db");
         var repository = TestRepository.Create(path, "Instructions\n{{data}}", clock);
         var service = new MentorService(repository, repository, repository, repository, new TestImporter(), clock);
         check(service.GetState().Settings.Runtime == new RuntimeSettings(5, "22:00"),
             "new database exposes default polling and analysis schedule");
+        check(service.GetState().TimeZone == TimeZoneInfo.Local.Id &&
+            System.Text.Json.JsonDocument.Parse(AnalysisPrompt.Data(new("2026-07-01", "{{data}}", [])))
+                .RootElement.GetProperty("TimeZone").GetString() == TimeZoneInfo.Local.Id,
+            "dashboard and analysis prompt report the system time zone");
 
         foreach (var invalid in new[] { new RuntimeSettings(0), new RuntimeSettings(3601),
             new RuntimeSettings(3, "24:00"), new RuntimeSettings(3, "9:00"),
@@ -55,9 +60,9 @@ internal static class RuntimeSettingsChecks
         check(!await processor.ProcessNextAsync(default), "worker uses updated schedule without restart");
         clock.Advance(TimeSpan.FromMinutes(1));
         check(await processor.ProcessNextAsync(default), "updated analysis time takes effect the next day");
-        check(DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T19:14:59Z"), null, "20:15") == null &&
-            DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T19:15:00Z"), null, "20:15") == "2026-12-01" &&
-            DailySchedule.DueDate(DateTimeOffset.Parse("2026-12-01T23:00:00Z"), null, "00:00") == "2026-12-02",
-            "custom schedule respects winter time, minute boundaries and midnight");
+        check(DailySchedule.DueDate(LocalTime.At("2026-12-01T20:14:59"), null, "20:15") == null &&
+            DailySchedule.DueDate(LocalTime.At("2026-12-01T20:15:00"), null, "20:15") == "2026-12-01" &&
+            DailySchedule.DueDate(LocalTime.At("2026-12-02T00:00:00"), null, "00:00") == "2026-12-02",
+            "custom schedule respects system local winter time, minute boundaries and midnight");
     }
 }

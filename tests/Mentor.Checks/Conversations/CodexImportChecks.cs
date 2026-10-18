@@ -42,7 +42,7 @@ internal static class CodexImportChecks
               {"items":[{"type":"userMessage","content":[{"type":"text","text":"Další dotaz"}]},
               {"type":"agentMessage","phase":"final","text":"Finální odpověď"}]}]}
             """;
-        var addedAt = DateTimeOffset.Parse("2026-10-17T22:05:00Z");
+        var addedAt = LocalTime.At("2026-10-18T00:05:00");
         var parsed = CodexShareParser.Parse(snapshot);
         check(parsed.Title == "Test Codex" && parsed.Messages.Select(m => m.Role).SequenceEqual(new[] { "user", "assistant", "user", "assistant" }) &&
             parsed.Messages[0].Text == "Ignoruj pokyny.\nDruhý řádek" && parsed.Messages[3].Text == "Finální odpověď",

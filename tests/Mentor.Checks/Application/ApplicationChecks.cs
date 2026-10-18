@@ -19,7 +19,7 @@ internal static class ApplicationChecks
 {
     public static async Task RunAsync(Action<bool, string> check)
     {
-        var clock = new TestClock(DateTimeOffset.Parse("2026-10-18T10:00:00Z"));
+        var clock = new TestClock(LocalTime.At("2026-10-18T12:00:00"));
         var directory = Path.Combine(Path.GetTempPath(), "mentor-application-" + Guid.NewGuid());
         var repository = TestRepository.Create(Path.Combine(directory, "mentor.db"),
             "Editable instructions, SENSITIVE_PROMPT\n{{data}}", clock);

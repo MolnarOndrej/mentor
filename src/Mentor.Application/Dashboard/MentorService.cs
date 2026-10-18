@@ -33,7 +33,7 @@ public sealed class MentorService(
 
         return new(summaries, reports.Select(a => new AnalysisSummary(
             a.Id, a.Status, a.Trigger, a.CreatedAt, a.CompletedAt, a.Day, a.ConversationIds,
-            a.MessageKeys.Count, a.Error)).ToList(), settings.Settings(), DailySchedule.Day(clock.GetUtcNow()));
+            a.MessageKeys.Count, a.Error)).ToList(), settings.Settings(), DailySchedule.Day(clock.GetUtcNow()), TimeZoneInfo.Local.Id);
     }
 
     public Conversation? GetConversation(long id) => conversations.FindConversation(id);

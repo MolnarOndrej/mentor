@@ -29,7 +29,7 @@ Mentor (HTTP, UI, host, monitoring)
 | Část | Odpovědnost |
 | --- | --- |
 | `MentorService` | Případy použití, validace vstupů, čtecí model pro UI |
-| `DailyAnalysisPolicy`, `DailySchedule` | Den podle Europe/Prague, výběr zpráv a jejich stabilní klíče |
+| `DailyAnalysisPolicy`, `DailySchedule` | Den podle systémového časového pásma, výběr zpráv a jejich stabilní klíče |
 | `AnalysisPrompt` | Dosazení dat do DB šablony; žádný skrytý text instrukcí |
 | `WorkProcessor` | Jedna testovatelná iterace zpracování s injektovanými poskytovateli |
 | `MentorDbContext` | EF Core model, mapování tabulek a JSON kolekcí |
@@ -53,7 +53,7 @@ DI registruje `IDbContextFactory<MentorDbContext>`. Repository je singleton kvů
 
 ## Zachované invarianty
 
-- Jeden den spojuje N celých konverzací podle dne vložení odkazu v Europe/Prague. Časy jednotlivých zpráv se neukládají ani nepoužívají.
+- Jeden den spojuje N celých konverzací podle dne vložení odkazu v systémovém časovém pásmu. Časy jednotlivých zpráv se neukládají ani nepoužívají.
 - Úprava promptu neovlivní rozpracované ani historické běhy.
 - Zkontrolovaný prompt se neposune potichu o nové zprávy. Nové importy zůstanou čekající.
 - Selhání nerozšíří úspěšné pokrytí a nesmaže předchozí výsledek.

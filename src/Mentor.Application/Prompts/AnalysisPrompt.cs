@@ -10,7 +10,7 @@ public static class AnalysisPrompt
         new
         {
             input.Day,
-            TimeZone = "Europe/Prague",
+            TimeZone = TimeZoneInfo.Local.Id,
             Conversations = input.Conversations.Select(c => new { c.Id, c.Title, c.Url, c.Messages })
         },
         new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }).ReplaceLineEndings("\n");

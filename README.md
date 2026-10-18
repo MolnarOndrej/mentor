@@ -20,8 +20,8 @@ Otevřete http://127.0.0.1:5178. Alternativně: `dotnet run --project src/Mentor
 
 1. Vložte veřejný sdílený odkaz na konverzaci ChatGPT (`https://chatgpt.com/share/<id>`) nebo Codexu (`https://chatgpt.com/s/cx_<id>`). Import začne na pozadí hned po uložení.
 2. Po stavu „Uloženo“ je vlastní kopie zpráv v databázi; původní odkaz už rozbor nepotřebuje. Kliknutím na název zobrazíte uložené zprávy s autory a pořadím.
-3. Pod vložením odkazu je dnešní rozbor. Klikněte na „Analyzovat“ nebo nechte aplikaci běžet do nastaveného času (výchozí 22:00 Europe/Prague). Starší den otevřete tlačítkem „Archiv“ nahoře; tlačítko „Dnes“ vás vrátí zpět.
-4. Celá konverzace ChatGPT i Codexu patří ke **dni vložení odkazu** v Europe/Prague. Datum se uloží automaticky při přidání odkazu a nemění se při dokončení nebo opakování importu. Původní časy jednotlivých zpráv se nenačítají, neukládají ani neposílají do rozboru. Konverzace se mezi dny nedělí; zachovává se pořadí a čísla zpráv pro citace.
+3. Pod vložením odkazu je dnešní rozbor. Klikněte na „Analyzovat“ nebo nechte aplikaci běžet do nastaveného času (výchozí 22:00 v systémovém časovém pásmu). Starší den otevřete tlačítkem „Archiv“ nahoře; tlačítko „Dnes“ vás vrátí zpět.
+4. Celá konverzace ChatGPT i Codexu patří ke **dni vložení odkazu** v systémovém časovém pásmu. Datum se uloží automaticky při přidání odkazu a nemění se při dokončení nebo opakování importu. Původní časy jednotlivých zpráv se nenačítají, neukládají ani neposílají do rozboru. Konverzace se mezi dny nedělí; zachovává se pořadí a čísla zpráv pro citace.
 5. Každý běh vytvoří **jeden společný rozbor všech zpráv daného dne ze všech konverzací**. Opakované spuštění zahrne i již analyzované zprávy: po přidání další konverzace vznikne aktualizovaná souhrnná verze, ne izolovaný dodatek.
 6. Počty zpráv ukazují pokrytí posledním úspěšným rozborem a počet čekajících zpráv. Archiv po dnech a konverzace jsou rozkliknutelné a řazené od nejnovějších. Z archivu lze otevřít denní rozbor. Při selhání zůstává předchozí úspěšný výsledek viditelný.
 
@@ -35,7 +35,7 @@ Zdrojové datum zprávy nemá vliv na import. Zpráva obsahuje pouze autora, tex
 
 Stejný odkaz po odstranění query/fragmentu a sjednocení ID znovu nevytvoří záznam. Neúspěšný import lze opakovat. Úspěšně uložená konverzace je snímek; opětovné vložení ji nepřepíše novější verzí.
 
-Tlačítko „Nastavení“ nahoře umožňuje měnit interval pollování (1–3600 sekund, výchozí 5 sekund) a čas automatického rozboru (výchozí 22:00, Europe/Prague). Obě hodnoty se ukládají do databáze a zachovají se po restartu. Interval řídí obnovování stránky i kontrolu fronty na pozadí; změny se načtou při dalším pollování bez restartu. Posun času na již uplynulou hodinu spustí dnešní automatický rozbor při další kontrole, pokud dnes ještě neběžel.
+Tlačítko „Nastavení“ nahoře umožňuje měnit interval pollování (1–3600 sekund, výchozí 5 sekund) a čas automatického rozboru (výchozí 22:00 v systémovém časovém pásmu). Obě hodnoty se ukládají do databáze a zachovají se po restartu. Interval řídí obnovování stránky i kontrolu fronty na pozadí; změny se načtou při dalším pollování bez restartu. Posun času na již uplynulou hodinu spustí dnešní automatický rozbor při další kontrole, pokud dnes ještě neběžel.
 
 ## Data a konfigurace
 

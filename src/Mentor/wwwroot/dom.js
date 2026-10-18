@@ -4,12 +4,11 @@ export const date = (value) =>
   new Intl.DateTimeFormat('cs-CZ', {
     dateStyle: 'medium',
     timeStyle: 'short',
-    timeZone: 'Europe/Prague',
   }).format(new Date(value));
 
 export const dayLabel = (day) =>
-  new Intl.DateTimeFormat('cs-CZ', { dateStyle: 'long', timeZone: 'Europe/Prague' }).format(
-    new Date(day + 'T12:00:00Z')
+  new Intl.DateTimeFormat('cs-CZ', { dateStyle: 'long' }).format(
+    new Date(day + 'T12:00:00')
   );
 
 export function el(tag, text, cls) {

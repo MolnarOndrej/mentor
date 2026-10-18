@@ -12,7 +12,7 @@ internal static class PersistenceChecks
         var directory = Path.Combine(Path.GetTempPath(), "mentor-ef-" + Guid.NewGuid());
         var databasePath = Path.Combine(directory, "mentor.db");
         var repository = TestRepository.Create(databasePath,
-            "Original instructions\n{{data}}", new TestClock(DateTimeOffset.Parse("2026-10-18T10:00:00Z")));
+            "Original instructions\n{{data}}", new TestClock(LocalTime.At("2026-10-18T12:00:00")));
         const string url = "https://chatgpt.com/share/00000000-0000-0000-0000-000000000001";
         var additions = await Task.WhenAll(Enumerable.Range(0, 12)
             .Select(_ => Task.Run(() => repository.Add(url))));
