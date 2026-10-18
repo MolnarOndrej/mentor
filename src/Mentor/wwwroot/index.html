@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Mentor · Denní zpětná vazba</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" type="module"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Mentor<span>.</span></h1>
+        <nav aria-label="Další možnosti">
+          <button id="open-settings" class="secondary">Zadání AI</button
+          ><button id="open-archive" class="secondary">Archiv</button>
+        </nav>
+      </header>
+      <div id="notice" role="status" aria-live="polite"></div>
+      <section class="import">
+        <form id="import-form">
+          <label for="url">Přidat konverzaci</label>
+          <div class="input-row">
+            <input id="url" type="url" required placeholder="Vložte sdílený odkaz ChatGPT" /><button
+              type="submit"
+            >
+              Přidat
+            </button>
+          </div>
+        </form>
+        <div id="import-status"></div>
+      </section>
+      <section class="current">
+        <div class="section-head">
+          <div>
+            <h2 id="report-heading">Dnešní rozbor</h2>
+            <span id="report-date" class="hint"></span>
+          </div>
+          <div class="actions">
+            <button id="back-today" class="secondary" hidden>Dnes</button
+            ><button id="analyze">Analyzovat</button>
+          </div>
+        </div>
+        <div id="day-status" class="hint"></div>
+        <div id="current-report"></div>
+        <details id="day-conversations">
+          <summary id="day-conversations-heading">Konverzace dne</summary>
+          <div id="current-conversations"></div>
+        </details>
+      </section>
+    </main>
+    <dialog id="settings-dialog">
+      <button id="close-settings" class="close" aria-label="Zavřít" title="Zavřít">×</button>
+      <h2>Zadání pro Codex CLI</h2>
+      <form id="prompt-form">
+        <label for="prompt" class="sr-only">Celý prompt</label
+        ><textarea id="prompt" rows="22" maxlength="240000" required></textarea>
+        <p id="prompt-status" class="hint" role="status"></p>
+        <div class="actions"><button type="submit">Uložit zadání</button></div>
+      </form>
+    </dialog>
+    <dialog id="archive-dialog">
+      <button id="close-archive" class="close" aria-label="Zavřít" title="Zavřít">×</button>
+      <h2>Archiv</h2>
+      <label for="day">Otevřít den</label><input id="day" type="date" />
+      <p id="archive-count" class="hint"></p>
+      <div id="archive"></div>
+    </dialog>
+    <dialog id="conversation-dialog">
+      <button id="close-conversation" class="close" aria-label="Zavřít" title="Zavřít">×</button>
+      <h2 id="conversation-title"></h2>
+      <div id="conversation-content"></div>
+    </dialog>
+    <dialog id="prompt-dialog">
+      <button id="close-prompt" class="close" aria-label="Zavřít" title="Zavřít">×</button>
+      <h2 id="prompt-title">Úplný prompt</h2>
+      <p id="prompt-description" class="hint"></p>
+      <label for="full-prompt">Text předávaný přes stdin do Codex CLI</label
+      ><textarea id="full-prompt" rows="22" readonly></textarea>
+    </dialog>
+  </body>
+</html>

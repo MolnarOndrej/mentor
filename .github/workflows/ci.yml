@@ -1,0 +1,30 @@
+name: Verify
+
+on: [push, pull_request]
+
+jobs:
+  dotnet:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.400
+      - run: dotnet restore Mentor.slnx --locked-mode
+      - run: dotnet build Mentor.slnx --no-restore --configuration Release
+      - run: dotnet run --project tests/Mentor.Checks --no-build --configuration Release
+      - run: dotnet format whitespace Mentor.slnx --no-restore --verify-no-changes
+
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check:ui

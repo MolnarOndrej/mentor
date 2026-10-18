@@ -1,0 +1,11 @@
+{
+  "name": "mentor-development-tools",
+  "private": true,
+  "scripts": {
+    "format:ui": "prettier --write \"src/Mentor/wwwroot/**/*.{js,css,html}\"",
+    "check:ui": "prettier --check \"src/Mentor/wwwroot/**/*.{js,css,html}\""
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
+  }
+}

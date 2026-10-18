@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Mentor.Application/Mentor.Application.csproj" />
+    <Project Path="src/Mentor.Infrastructure/Mentor.Infrastructure.csproj" />
+    <Project Path="src/Mentor/Mentor.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Mentor.Checks/Mentor.Checks.csproj" />
+  </Folder>
+</Solution>

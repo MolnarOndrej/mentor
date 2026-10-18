@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/Data/
+share-probe.html
+probe-table.json
+.vs/
+*.user
+*.log
+mentor-desktop.png
+mentor-mobile.png
+node_modules/

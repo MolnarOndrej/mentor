@@ -1,1 +1,81 @@
-# mentor
+# Mentor
+
+Osobní AI kouč v češtině. ASP.NET Core 10, jedna stránka v HTML/JS, Entity Framework Core se SQLite a jeden background worker. Bez přihlášení, pouze `http://127.0.0.1:5178`.
+
+Kód má tři vrstvy: `Mentor.Application` (pravidla a rozhraní), `Mentor.Infrastructure` (SQLite, import, Codex CLI) a `Mentor` (web, UI, host a monitoring). Rozbor kódu, rozhodnutí a další doporučení jsou v [architektuře](docs/architecture.md); provozní endpointy, logy a OTLP v [provozním návodu](docs/operations.md).
+
+## Spuštění na Windows
+
+Potřebujete .NET SDK 10 a Codex CLI dostupný jako `codex.exe`. Přihlaste CLI pod stejným Windows účtem, který spouští Mentor:
+
+```powershell
+codex login
+codex login status
+./start-mentor.ps1
+```
+
+Otevřete http://127.0.0.1:5178. Alternativně: `dotnet run --project src/Mentor --no-launch-profile`. Port je záměrně pevný a middleware odmítá ne-lokální přístup i cizí Host/Origin. Nevystavujte aplikaci přes veřejný proxy server ani tunel.
+
+## Použití
+
+1. Vložte veřejný sdílený odkaz ChatGPT. Import začne na pozadí hned po uložení.
+2. Po stavu „Uloženo“ je vlastní kopie zpráv v databázi; původní odkaz už rozbor nepotřebuje. Kliknutím na název zobrazíte uložené zprávy s autory a pořadím.
+3. Pod vložením odkazu je dnešní rozbor. Klikněte na „Analyzovat“ nebo nechte aplikaci běžet do 20:00 Europe/Prague. Starší den otevřete tlačítkem „Archiv“ nahoře; tlačítko „Dnes“ vás vrátí zpět.
+4. Zprávy jsou rozdělené podle **skutečného času vytvoření zprávy** v Europe/Prague, nikoli podle data importu. Jedno vlákno může patřit do více dní; pro vybraný den se předají jen jeho zprávy. Čísla zpráv pro citace zůstávají původní.
+5. Každý běh vytvoří **jeden společný rozbor všech zpráv daného dne ze všech konverzací**. Opakované spuštění zahrne i již analyzované zprávy: po přidání další konverzace vznikne aktualizovaná souhrnná verze, ne izolovaný dodatek.
+6. Počty zpráv ukazují pokrytí posledním úspěšným rozborem a počet čekajících zpráv. Archiv po dnech, konverzace i verze rozborů jsou rozkliknutelné a řazené od nejnovějších. Při selhání zůstává předchozí úspěšný výsledek viditelný.
+
+Tlačítko „Zadání AI“ nahoře otevře editor společného zadání. Tlačítko pro analýzu uloží úpravy současně se zařazením běhu do fronty. Editor obsahuje jeden upravitelný text celého promptu včetně pravidel. Všechna zadání se čtou z databáze; za běhu se nepřipojují žádné skryté instrukce. Konverzace nahrazují viditelné místo `{{data}}` v databázové šabloně. UI ukazuje rozbalený prompt se skutečnými daty; při uložení se nezměněný blok dat vrátí na `{{data}}`, aby další den používal vlastní zprávy. Ručně zkontrolovaný vstup se při zařazení do fronty uloží přesně tak, jak byl vidět v editoru. Pokud se mezitím data změnila nebo probíhá import, spuštění vyžádá nové otevření zadání; žádné zprávy se do zkontrolovaného vstupu nepřidají potichu. Automatický běh sestaví a uloží vstup při zahájení. Přesnou kopii lze otevřít během běhu i v podrobnostech rozboru. Úprava zadání nemění rozpracované ani historické běhy.
+
+Denní rozbor funguje jen za běhu aplikace a počítače. Při spuštění po 20:00 se doplní dnešní rozbor; starší vynechané dny lze spustit ručně v archivu. Letní/zimní čas řeší systémová časová zóna. Zahrnou se všechny zprávy dne dostupné při zahájení běhu. Později importované zprávy jsou označené jako čekající a celý den lze aktualizovat ručně. Den bez zpráv vytvoří záznam bez volání CLI. Současná kliknutí na stejný den nespuštějí dva souběžné rozbory; různé dny zpracovává jedna fronta postupně.
+
+Ověřený zdroj je **veřejná textová sdílená konverzace ChatGPT**, konkrétně dodaný odkaz při vývoji (10 zpráv, 5 uživatelských a 5 odpovědí AI). Formát ChatGPT není veřejné stabilní importní API; při jeho změně import skončí skutečnou chybou. Claude a další zdroje nejsou v této verzi implementované. Přihlášení, HTTP blokace, chybějící obsah, netextové zprávy a neočekávaný formát se nepovažují za úspěšný import. Interní myšlenky a zprávy nástrojů se neimportují. Uživatelům nejsou přisuzovány výroky AI.
+
+Chybějící datum zprávy je chyba importu; nikdy se nenahradí datem vložení odkazu.
+
+Stejný odkaz po odstranění query/fragmentu a sjednocení ID znovu nevytvoří záznam. Neúspěšný import lze opakovat. Úspěšně uložená konverzace je snímek; opětovné vložení ji nepřepíše novější verzí.
+
+## Data a konfigurace
+
+Databáze: `src/Mentor/Data/mentor.db` (včetně WAL/SHM za běhu), vynechaná z Gitu. Obsah není šifrovaný aplikací; chraňte Windows účet a disk. Pro zálohu aplikaci zastavte a zkopírujte celý adresář `Data`. Smazání zdrojového vlákna nesmaže kopii v Mentoru.
+
+Volitelné proměnné prostředí:
+
+| Proměnná | Význam |
+| --- | --- |
+| `Mentor__CodexExecutable` | Úplná cesta k nativnímu `codex.exe`; výchozí `codex.exe` z PATH. Skript ji zjistí automaticky. |
+| `Mentor__DataDirectory` | Absolutní cesta k adresáři databáze; výchozí `Data` uvnitř projektu. |
+
+Analýza předává vybrané zprávy dne a upravené zadání přihlášenému Codex CLI, které komunikuje se službou OpenAI; nejde o offline model. Aplikace nevolá modelové API přímo. Limit importní stránky je 8 MB, zadání 20 000 znaků, celého vstupu CLI 240 000 znaků a běhu CLI 10 minut. Nadlimitní dávka skončí chybou bez tichého zkrácení či označení zpráv za zpracované.
+
+Soubor `prompts/mentor.txt` slouží pouze k prvnímu naplnění nové databáze. Existující zadání se z něj při restartu neobnovuje. `AnalysisPrompt.cs` jen dosazuje data do databázové šablony a kontroluje její formát; neobsahuje textové konstanty instrukcí.
+
+## Codex CLI a spolehlivost
+
+Jediný integrační bod pro analýzu je `IConversationAnalyzer`, implementovaný `CodexCliAnalyzer`. CLI se spouští bez shellu/skrytě, vstup jde přes stdin, výstup přes JSONL. Uspěje až při nulovém exit kódu, události `turn.completed` a neprázdném finálním textu. Selhání, timeout nebo chybějící CLI jsou trvale zaznamenané a konverzace zůstanou k dalšímu pokusu.
+
+Používá `--sandbox read-only`, zákaz schvalování, vypnutý shell/patch/web, `--ignore-user-config`, `--ignore-rules`, `--ephemeral` a prázdný pracovní adresář. Nenačítá projektové instrukce. Importované zprávy jsou v promptu výslovně nedůvěryhodná data. Výstup s událostí akčního nástroje se nepřijme. Účelem CLI je pouze textový rozbor; nepřebírá osobní konfiguraci nástrojů, hooků či MCP. Viz [oficiální dokumentace neinteraktivního Codexu](https://developers.openai.com/codex/noninteractive/).
+
+Fronta i stavy žijí v SQLite, ne jen v paměti. Po restartu se importy obnoví, přerušený rozbor se označí za selhání. Běh má neměnný snímek zadání a seznam přesných klíčů zahrnutých zpráv; pokrytí se počítá pouze z úspěšných výsledků. Výsledek se zapisuje transakčně. Zámek adresáře zabraňuje dvěma instancím nad stejnou databází.
+
+## Pravidlo pilotu
+
+Zpětnou kompatibilitu řešíme až na výslovný pokyn uživatele. Při změně schématu se pilotní databáze zahodí a založí znovu; aplikace neobsahuje migrační ani legacy větve. Pro čistý start zastavte Mentor a odstraňte jeho adresář `Data` (nebo adresář nastavený v `Mentor__DataDirectory`). Běžný restart data nemaže.
+
+## Ověření
+
+```powershell
+dotnet restore Mentor.slnx --locked-mode
+dotnet build Mentor.slnx --no-restore
+dotnet run --project tests/Mentor.Checks --no-build
+npm ci
+npm run check:ui
+# Formát C# (nebo formátování bez --verify-no-changes):
+dotnet format whitespace Mentor.slnx --no-restore --verify-no-changes
+# Volitelně ověřit parser na lokálně uloženém skutečném HTML:
+dotnet run --project tests/Mentor.Checks -- C:/cesta/ke/share.html
+```
+
+Kontroly pokrývají parser/role/časy, chybějící data, společný rozbor více konverzací, rozdělení vlákna přes půlnoc, opakovaný rozbor celého dne, neměnnost promptu a pokrytí, duplicity, restart, chyby CLI a shodu skutečného stdin s uloženým promptem. Skutečná konverzace ani osobní databáze nejsou testovací fixture v Gitu.
+
+Navíc ověřují izolované business služby, výstup job metrik a traces, anonymitu provozních dat, health checky a směr závislostí mezi vrstvami. Workflow `.github/workflows/ci.yml` provádí build a kontroly na Windows/Linux a ověřuje formát UI. Skript `node scripts/observability-smoke.mjs` otestuje skutečný HTTP host, SQLite, proces a export OTLP s testovacími daty, bez volání modelu; před jeho spuštěním zastavte běžící Mentor. `npm run format:ui` upraví formát UI, `npm run check:ui` jej pouze zkontroluje.
