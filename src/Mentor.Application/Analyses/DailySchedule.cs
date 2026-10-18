@@ -13,6 +13,6 @@ public static class DailySchedule
     {
         var local = TimeZoneInfo.ConvertTime(utc, Prague);
         var date = Day(utc);
-        return local.Hour >= 20 && lastDate != date ? date : null;
+        return local.Hour >= 22 && lastDate != date ? date : null;
     }
 }

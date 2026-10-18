@@ -57,7 +57,7 @@ Databázi spravuje EF Core přes `EnsureCreated`. Prázdný adresář při start
 1. **HTTP 503 readiness:** podle `checks` zjistit databázi/worker/CLI. Databázi nesdílet mezi více procesy. Zkontrolovat zapisovatelný adresář a cestu k CLI.
 2. **Narůstá fronta:** porovnat běžící úlohu a heartbeat s timeoutem; delší rozbor je očekávaný, úloha přes limit ne. Zkontrolovat strukturovaný log podle `JobId`.
 3. **Rozbor selhal:** přesnou chybu přečíst v UI, ověřit `codex login status` pod stejným Windows účtem, opravit příčinu a spustit nový pokus.
-4. **Chybí denní výsledek:** aplikace i PC musejí běžet; plán je ve 20:00 Europe/Prague. Starší den lze otevřít v archivu.
+4. **Chybí denní výsledek:** aplikace i PC musejí běžet; plán je ve 22:00 Europe/Prague. Starší den lze otevřít v archivu.
 
 ## Ověření transportu a provozních stavů
 

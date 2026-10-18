@@ -333,4 +333,4 @@ $('analyze').onclick = async () => {
   }
 };
 refresh().catch((e) => notice(e.message));
-setInterval(() => refresh().catch((e) => notice('Spojení s Mentorem selhalo: ' + e.message)), 2500);
+setInterval(() => refresh().catch((e) => notice('Spojení s Mentorem selhalo: ' + e.message)), 5000);

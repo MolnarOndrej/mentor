@@ -35,7 +35,7 @@ public sealed class MentorWorker(IServiceScopeFactory scopeFactory, WorkerStatus
                         error.GetType().Name, clock.GetElapsedTime(started).TotalSeconds);
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(2), clock, stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(5), clock, stoppingToken);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
