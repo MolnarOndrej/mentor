@@ -14,15 +14,15 @@ public sealed partial class ChatGptImporter(HttpClient http, IOptions<MentorInfr
     {
         if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) || uri.Scheme != "https" ||
            !uri.Host.Equals("chatgpt.com", StringComparison.OrdinalIgnoreCase) || !uri.IsDefaultPort || uri.UserInfo.Length > 0 ||
-           !SharePath().IsMatch(uri.AbsolutePath))
-            throw new ArgumentException("Zatím je ověřen pouze veřejný odkaz https://chatgpt.com/share/<id>. Tento zdroj nebo formát není podporován.");
-        return "https://chatgpt.com/share/" + uri.AbsolutePath.Split('/')[2].ToLowerInvariant();
+           !(SharePath().IsMatch(uri.AbsolutePath) || CodexSharePath().IsMatch(uri.AbsolutePath)))
+            throw new ArgumentException("Podporovány jsou veřejné odkazy https://chatgpt.com/share/<id> a https://chatgpt.com/s/cx_<id>. Tento zdroj nebo formát není podporován.");
+        return "https://chatgpt.com" + uri.AbsolutePath.TrimEnd('/').ToLowerInvariant();
     }
-    public async Task<ImportedConversation> ImportAsync(string url, CancellationToken ct)
+    public async Task<ImportedConversation> ImportAsync(string url, DateTimeOffset addedAt, CancellationToken ct)
     {
         try
         {
-            return await DownloadAsync(url, ct);
+            return await DownloadAsync(url, addedAt, ct);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
@@ -33,13 +33,16 @@ public sealed partial class ChatGptImporter(HttpClient http, IOptions<MentorInfr
             throw new InvalidOperationException("Zdroj nelze načíst kvůli síťové chybě: " + e.Message, e);
         }
     }
-    private async Task<ImportedConversation> DownloadAsync(string url, CancellationToken ct)
+    private async Task<ImportedConversation> DownloadAsync(string url, DateTimeOffset addedAt, CancellationToken ct)
     {
-        using var response = await http.GetAsync(Normalize(url), HttpCompletionOption.ResponseHeadersRead, ct);
+        var normalized = Normalize(url);
+        var codex = new Uri(normalized).AbsolutePath.StartsWith("/s/", StringComparison.Ordinal);
+        var source = codex ? "https://chatgpt.com/backend-api/wham/shared_threads/" + normalized.Split('/')[^1] : normalized;
+        using var response = await http.GetAsync(source, HttpCompletionOption.ResponseHeadersRead, ct);
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException($"Zdroj vrátil HTTP {(int)response.StatusCode} ({response.ReasonPhrase}). Odkaz může být smazaný, neveřejný nebo blokovaný.");
-        if (response.Content.Headers.ContentType?.MediaType != "text/html")
-            throw new InvalidOperationException("Zdroj nevrátil HTML konverzace.");
+        if (response.Content.Headers.ContentType?.MediaType != (codex ? "application/json" : "text/html"))
+            throw new InvalidOperationException(codex ? "Zdroj nevrátil JSON sdílené konverzace Codexu." : "Zdroj nevrátil HTML konverzace.");
         var limit = options.Value.MaxImportBytes;
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         using var buffer = new MemoryStream();
@@ -51,8 +54,12 @@ public sealed partial class ChatGptImporter(HttpClient http, IOptions<MentorInfr
                 throw new InvalidOperationException($"Stránka překročila limit {limit} bajtů; nebyla importována jen částečně.");
             buffer.Write(bytes, 0, read);
         }
-        return ChatGptShareParser.Parse(Encoding.UTF8.GetString(buffer.ToArray()));
+        var content = Encoding.UTF8.GetString(buffer.ToArray());
+        return codex ? CodexShareParser.Parse(content, addedAt) : ChatGptShareParser.Parse(content);
     }
     [GeneratedRegex("^/share/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/?$")]
     private static partial Regex SharePath();
+
+    [GeneratedRegex("^/s/cx_[0-9a-fA-F]{32}/?$")]
+    private static partial Regex CodexSharePath();
 }

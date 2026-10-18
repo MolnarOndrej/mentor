@@ -3,6 +3,7 @@ using Mentor.Application.Analyses;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Prompts;
 using Mentor.Checks.Application;
+using Mentor.Checks.Conversations;
 using Mentor.Checks.Persistence;
 using Mentor.Infrastructure.Analyses;
 using Mentor.Infrastructure.Configuration;
@@ -70,7 +71,19 @@ var timeKey = table.FindIndex(x => x is string s && s == "create_time");
 table[timeKey] = "missing_time";
 Reject(() => ChatGptShareParser.Parse("streamController.enqueue(" + JsonSerializer.Serialize(JsonSerializer.Serialize(table)) + ")"), "missing timestamp cannot silently use import day");
 table[timeKey] = "create_time";
-if (args.Length > 0)
+await CodexImportChecks.RunAsync(Check);
+if (args.FirstOrDefault() is "--codex-share" or "--codex-url")
+{
+    var addedAt = DateTimeOffset.Parse("2026-10-18T10:00:00Z");
+    using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
+    http.DefaultRequestHeaders.UserAgent.ParseAdd("Mentor/1.0");
+    var real = args[0] == "--codex-url"
+        ? await new ChatGptImporter(http, Options.Create(new MentorInfrastructureOptions())).ImportAsync(args[1], addedAt, default)
+        : CodexShareParser.Parse(File.ReadAllText(args[1]), addedAt);
+    Check(real.Messages.Count == 2 && real.Messages[0].Role == "user" && real.Messages[1].Role == "assistant" &&
+        real.Messages.All(m => DailySchedule.Day(m.CreatedAt) == "2026-10-18"), "real Codex share: user and final answer assigned to link insertion day");
+}
+else if (args.Length > 0)
 {
     var real = ChatGptShareParser.Parse(File.ReadAllText(args[0]));
     Check(real.Messages.Count == 10 && real.Messages.Count(m => m.Role == "user") == 5 && real.Messages.All(m => DailySchedule.Day(m.CreatedAt) == "2026-10-07"), "real share: 10 messages on Oct 7, independent of import day");

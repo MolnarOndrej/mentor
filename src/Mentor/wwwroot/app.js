@@ -308,6 +308,11 @@ async function showConversation(id, day) {
   $('conversation-title').textContent = `#${c.id} · ${c.title}`;
   const content = $('conversation-content');
   content.replaceChildren();
+  const codex = new URL(c.url).pathname.startsWith('/s/cx_');
+  if (codex)
+    content.append(
+      el('p', 'Codex nesdílí časy zpráv. Zprávy jsou přiřazeny ke dni vložení odkazu.', 'hint')
+    );
   const messages = c.messages.filter(
     (m) =>
       !day ||
@@ -324,7 +329,7 @@ async function showConversation(id, day) {
     const row = el('div', undefined, 'message');
     row.append(
       el('strong', `${m.number}. ${m.role === 'user' ? 'Vy' : 'AI'}`),
-      el('p', date(m.createdAt), 'meta'),
+      el('p', `${codex ? 'Vložení odkazu: ' : ''}${date(m.createdAt)}`, 'meta'),
       el('pre', m.text)
     );
     content.append(row);

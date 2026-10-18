@@ -18,10 +18,10 @@ Otevřete http://127.0.0.1:5178. Alternativně: `dotnet run --project src/Mentor
 
 ## Použití
 
-1. Vložte veřejný sdílený odkaz ChatGPT. Import začne na pozadí hned po uložení.
+1. Vložte veřejný sdílený odkaz na konverzaci ChatGPT (`https://chatgpt.com/share/<id>`) nebo Codexu (`https://chatgpt.com/s/cx_<id>`). Import začne na pozadí hned po uložení.
 2. Po stavu „Uloženo“ je vlastní kopie zpráv v databázi; původní odkaz už rozbor nepotřebuje. Kliknutím na název zobrazíte uložené zprávy s autory a pořadím.
 3. Pod vložením odkazu je dnešní rozbor. Klikněte na „Analyzovat“ nebo nechte aplikaci běžet do 20:00 Europe/Prague. Starší den otevřete tlačítkem „Archiv“ nahoře; tlačítko „Dnes“ vás vrátí zpět.
-4. Zprávy jsou rozdělené podle **skutečného času vytvoření zprávy** v Europe/Prague, nikoli podle data importu. Jedno vlákno může patřit do více dní; pro vybraný den se předají jen jeho zprávy. Čísla zpráv pro citace zůstávají původní.
+4. Zprávy ChatGPT jsou rozdělené podle **skutečného času vytvoření zprávy** v Europe/Prague, nikoli podle data importu. Jedno vlákno může patřit do více dní; pro vybraný den se předají jen jeho zprávy. Codex ve sdílených datech neposkytuje časy zpráv, proto se celá konverzace přiřadí ke **dni vložení odkazu** v Europe/Prague, i při pozdějším opakování importu. Detail tuto skutečnost uvádí. Čísla zpráv pro citace zůstávají původní.
 5. Každý běh vytvoří **jeden společný rozbor všech zpráv daného dne ze všech konverzací**. Opakované spuštění zahrne i již analyzované zprávy: po přidání další konverzace vznikne aktualizovaná souhrnná verze, ne izolovaný dodatek.
 6. Počty zpráv ukazují pokrytí posledním úspěšným rozborem a počet čekajících zpráv. Archiv po dnech, konverzace i verze rozborů jsou rozkliknutelné a řazené od nejnovějších. Při selhání zůstává předchozí úspěšný výsledek viditelný.
 
@@ -29,9 +29,9 @@ Tlačítko „Zadání AI“ nahoře otevře editor společného zadání. Tlač
 
 Denní rozbor funguje jen za běhu aplikace a počítače. Při spuštění po 20:00 se doplní dnešní rozbor; starší vynechané dny lze spustit ručně v archivu. Letní/zimní čas řeší systémová časová zóna. Zahrnou se všechny zprávy dne dostupné při zahájení běhu. Později importované zprávy jsou označené jako čekající a celý den lze aktualizovat ručně. Den bez zpráv vytvoří záznam bez volání CLI. Současná kliknutí na stejný den nespuštějí dva souběžné rozbory; různé dny zpracovává jedna fronta postupně.
 
-Ověřený zdroj je **veřejná textová sdílená konverzace ChatGPT**, konkrétně dodaný odkaz při vývoji (10 zpráv, 5 uživatelských a 5 odpovědí AI). Formát ChatGPT není veřejné stabilní importní API; při jeho změně import skončí skutečnou chybou. Claude a další zdroje nejsou v této verzi implementované. Přihlášení, HTTP blokace, chybějící obsah, netextové zprávy a neočekávaný formát se nepovažují za úspěšný import. Interní myšlenky a zprávy nástrojů se neimportují. Uživatelům nejsou přisuzovány výroky AI.
+Ověřené zdroje jsou **veřejné textové sdílené konverzace ChatGPT a Codexu**. Dodaný ChatGPT odkaz při vývoji obsahoval 10 zpráv (5 uživatelských a 5 odpovědí AI), Codex odkaz jeden uživatelský dotaz a jednu finální odpověď. Codex se načítá z veřejného JSON endpointu `/backend-api/wham/shared_threads/<id>` ve formátu verze 1. Tyto formáty nejsou veřejné stabilní importní API; při změně import skončí skutečnou chybou. Claude a další zdroje nejsou v této verzi implementované. Přihlášení, HTTP blokace, chybějící obsah, netextové zprávy a neočekávaný formát se nepovažují za úspěšný import. Interní myšlenky, průběžné komentáře Codexu a výstupy nástrojů včetně změn souborů se neimportují. Uživatelům nejsou přisuzovány výroky AI.
 
-Chybějící datum zprávy je chyba importu; nikdy se nenahradí datem vložení odkazu.
+Chybějící datum zprávy ChatGPT je chyba importu. Použití dne vložení odkazu je výslovná politika pouze pro sdílené konverzace Codexu, které časy zpráv neposkytují.
 
 Stejný odkaz po odstranění query/fragmentu a sjednocení ID znovu nevytvoří záznam. Neúspěšný import lze opakovat. Úspěšně uložená konverzace je snímek; opětovné vložení ji nepřepíše novější verzí.
 
@@ -74,6 +74,8 @@ npm run check:ui
 dotnet format whitespace Mentor.slnx --no-restore --verify-no-changes
 # Volitelně ověřit parser na lokálně uloženém skutečném HTML:
 dotnet run --project tests/Mentor.Checks -- C:/cesta/ke/share.html
+# Volitelně ověřit parser na lokálně uloženém JSON veřejné konverzace Codexu:
+dotnet run --project tests/Mentor.Checks -- --codex-share C:/cesta/ke/snapshot.json
 ```
 
 Kontroly pokrývají parser/role/časy, chybějící data, společný rozbor více konverzací, rozdělení vlákna přes půlnoc, opakovaný rozbor celého dne, neměnnost promptu a pokrytí, duplicity, restart, chyby CLI a shodu skutečného stdin s uloženým promptem. Skutečná konverzace ani osobní databáze nejsou testovací fixture v Gitu.
