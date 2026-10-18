@@ -27,7 +27,11 @@ function element(tag) {
 function descendants(node) {
   return node.children.flatMap((child) => [child, ...descendants(child)]);
 }
-globalThis.document = { createElement: element, activeElement: null };
+globalThis.document = {
+  createElement: element,
+  createElementNS: (_, tag) => element(tag),
+  activeElement: null,
+};
 const root = element('div');
 const calendar = new ArchiveCalendar(root, (list, day) => list.append({ ...element('a'), textContent: day }));
 const days = () => descendants(root).filter((node) => node.classList.contains('calendar-day'));

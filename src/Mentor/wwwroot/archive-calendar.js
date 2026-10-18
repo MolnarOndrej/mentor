@@ -49,12 +49,19 @@ export class ArchiveCalendar {
     );
     month.id = 'archive-month';
     month.setAttribute('aria-live', 'polite');
-    for (const [offset, label, text] of [
-      [-1, 'Předchozí měsíc', '‹'],
-      [1, 'Následující měsíc', '›'],
+    for (const [offset, label, path] of [
+      [-1, 'Předchozí měsíc', 'm15 6-6 6 6 6'],
+      [1, 'Následující měsíc', 'm9 6 6 6-6 6'],
     ]) {
-      const control = el('button', text, 'secondary calendar-nav');
+      const control = el('button', undefined, 'secondary calendar-nav');
       control.setAttribute('aria-label', label);
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      icon.setAttribute('aria-hidden', 'true');
+      const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      shape.setAttribute('d', path);
+      icon.append(shape);
+      control.append(icon);
       control.onclick = () => {
         this.#moveMonth(offset);
         this.#container.querySelector(`[aria-label="${label}"]`).focus();
