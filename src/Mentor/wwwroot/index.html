@@ -48,13 +48,13 @@
             data-page="prompt"
             id="open-settings"
             class="secondary nav-link"
-            aria-label="Zadání AI"
-            title="Zadání AI"
+            aria-label="Instrukce kouče"
+            title="Instrukce kouče"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M14 3H5v18h14v-9M8 8h3M8 12h3M8 16h7M15 7l2 2 5-5-2-2z" />
             </svg>
-            <span>Zadání AI</span>
+            <span>Instrukce kouče</span>
           </a>
           <a
             href="#/archive"
@@ -149,16 +149,12 @@
         </form>
       </section>
       <section id="prompt-page" data-view="prompt" aria-labelledby="prompt-heading" hidden>
-        <h2 id="prompt-heading">Zadání AI</h2>
-        <p class="hint">
-          Před dnešním rozborem se konverzace načtou znovu z uložených odkazů. Data v promptu se
-          aktualizují; nedostupné odkazy ponechají uložený obsah.
-        </p>
+        <h2 id="prompt-heading">Instrukce kouče</h2>
         <form id="prompt-form">
           <label for="prompt" class="sr-only">Celý prompt</label
           ><textarea id="prompt" rows="22" maxlength="240000" required disabled></textarea>
           <p id="prompt-status" class="hint" role="status"></p>
-          <div class="actions"><button type="submit" disabled>Uložit zadání</button></div>
+          <div class="actions"><button type="submit" disabled>Uložit instrukce</button></div>
         </form>
       </section>
       <section id="archive-page" data-view="archive" aria-labelledby="archive-heading" hidden>
