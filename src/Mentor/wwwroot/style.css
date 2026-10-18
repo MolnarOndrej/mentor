@@ -134,8 +134,7 @@ button:disabled {
   height: 44px;
   padding: 10px;
 }
-.icon-button svg,
-.close svg {
+.icon-button svg {
   width: 22px;
   height: 22px;
   fill: none;
@@ -144,7 +143,9 @@ button:disabled {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.icon-button:focus-visible {
+.icon-button:focus-visible,
+.conversation-action:focus-visible,
+.close:focus-visible {
   outline: 2px solid #759a82;
   outline-offset: 3px;
 }
@@ -426,21 +427,6 @@ dialog::backdrop {
   }
 }
 
-.close {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: #69766e;
-}
-.close:hover {
-  background: #edf0e8;
-  color: #273b36;
-}
-
 .sr-only {
   position: absolute;
   width: 1px;
@@ -468,11 +454,19 @@ dialog::backdrop {
   flex-wrap: nowrap;
   margin: 0;
 }
-.conversation-action {
+.conversation-action,
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
   padding: 7px;
   line-height: 0;
 }
-.conversation-action svg {
+.conversation-action svg,
+.close svg {
   width: 20px;
   height: 20px;
   fill: none;
