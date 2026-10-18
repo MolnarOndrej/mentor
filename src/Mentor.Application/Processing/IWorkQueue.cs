@@ -11,6 +11,7 @@ public interface IWorkQueue
     void ImportFailed(long id, string error);
     long EnqueueAnalysis(string trigger, string? day = null, string? promptOverride = null, string? expectedData = null);
     (long Id, AnalysisInput Input)? ClaimAnalysis();
+    AnalysisInput RefreshAnalysisInput(long id);
     void AnalysisDone(long id, string result);
     void AnalysisFailed(long id, string error);
 }

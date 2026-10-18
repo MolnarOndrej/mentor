@@ -12,7 +12,7 @@ export function analysisControl(state, day) {
   const messages = coverage.reduce((sum, d) => sum + d.messageCount, 0);
   const analyzed = coverage.reduce((sum, d) => sum + d.analyzedCount, 0);
   if (!messages) return { enabled: false, status: 'empty', label: 'Nejsou zprávy k rozboru' };
-  if (analyzed >= messages)
+  if (analyzed >= messages && day !== state.today)
     return { enabled: false, status: 'completed', label: 'Rozbor je aktuální' };
   return {
     enabled: true,

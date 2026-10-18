@@ -1,3 +1,4 @@
+using Mentor.Application.Conversations;
 using Mentor.Application.Analyses;
 using Mentor.Application.Configuration;
 using Mentor.Application.Dashboard;
@@ -16,7 +17,7 @@ internal static class RuntimeSettingsChecks
         var clock = new TestClock(LocalTime.At("2026-07-01T20:14:59"));
         var path = Path.Combine(Path.GetTempPath(), "mentor-settings-" + Guid.NewGuid(), "mentor.db");
         var repository = TestRepository.Create(path, "Instructions\n{{data}}", clock);
-        var service = new MentorService(repository, repository, repository, repository, new TestImporter(), clock);
+        var service = new MentorService(repository, repository, repository, repository, new TestImporter(), clock, new ConversationRefresher(repository, new TestImporter(), clock));
         check(service.GetState().Settings.Runtime == new RuntimeSettings(5, "22:00"),
             "new database exposes default polling and analysis schedule");
         check(service.GetState().TimeZone == TimeZoneInfo.Local.Id &&
@@ -40,13 +41,16 @@ internal static class RuntimeSettingsChecks
             "settings service returns the saved database values");
         repository.SavePrompt("Edited instructions\n{{data}}");
         repository = TestRepository.Create(path, "Ignored prompt\n{{data}}", clock);
-        check(repository.Settings() is { Runtime: { PollIntervalSeconds: 3, DailyTime: "20:15" },
-            Prompt: "Edited instructions\n{{data}}", LastDailyDate: null },
+        check(repository.Settings() is
+        {
+            Runtime: { PollIntervalSeconds: 3, DailyTime: "20:15" },
+            Prompt: "Edited instructions\n{{data}}", LastDailyDate: null
+        },
             "runtime settings and prompt survive repository restart independently");
 
         using var telemetry = new MentorTelemetry();
         var processor = new WorkProcessor(repository, repository, new TestImporter(), new TestAnalyzer(),
-            clock, telemetry, new TestLogger());
+            clock, telemetry, new TestLogger(), new ConversationRefresher(repository, new TestImporter(), clock));
         check(!await processor.ProcessNextAsync(default), "worker waits until configured analysis minute");
         clock.Advance(TimeSpan.FromSeconds(1));
         check(await processor.ProcessNextAsync(default) && repository.Analyses().Single().Trigger == "daily",

@@ -1,3 +1,4 @@
+using Mentor.Application.Conversations;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Mentor.Application.Analyses;
@@ -51,8 +52,8 @@ internal static class ApplicationChecks
         });
         meter.Start();
         using var telemetry = new MentorTelemetry();
-        var service = new MentorService(repository, repository, repository, repository, importer, clock);
-        var processor = new WorkProcessor(repository, repository, importer, analyzer, clock, telemetry, logger);
+        var service = new MentorService(repository, repository, repository, repository, importer, clock, new ConversationRefresher(repository, importer, clock));
+        var processor = new WorkProcessor(repository, repository, importer, analyzer, clock, telemetry, logger, new ConversationRefresher(repository, importer, clock));
 
         const string url = "https://chatgpt.com/share/6ad4ab23-61e0-83eb-8533-14def95d3491";
         service.AddConversation(url);

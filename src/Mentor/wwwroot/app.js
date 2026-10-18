@@ -71,9 +71,45 @@ function selectDay(day) {
   refresh(true);
   $('report-heading').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-function conversationCard(c, day) {
+function conversationCard(c, day, editable = false) {
   const card = el('div', undefined, 'card');
-  card.append(button(`#${c.id} · ${c.title}`, () => showConversation(c.id), 'link-button'));
+  const heading = el('div', undefined, 'conversation-heading');
+  heading.append(button(`#${c.id} · ${c.title}`, () => showConversation(c.id), 'link-button'));
+  if (editable) {
+    const actions = el('div', undefined, 'actions conversation-actions');
+    for (const [label, path, action] of [
+      [
+        'Aktualizovat konverzaci',
+        'M20 7v5h-5 M4 17v-5h5 M6.1 7a7 7 0 0 1 11.6-2L20 8 M4 16l2.3 3A7 7 0 0 0 18 17',
+        async () => {
+          const result = await api(`conversations/${c.id}/refresh`, 'POST');
+          notice(result.message);
+        },
+      ],
+      [
+        'Smazat konverzaci',
+        'M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7',
+        async () => {
+          await api(`conversations/${c.id}`, 'DELETE');
+          notice('Konverzace byla smazána.');
+        },
+      ],
+    ]) {
+      const control = button('', action, 'secondary conversation-action');
+      control.title = label;
+      control.setAttribute('aria-label', label);
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('aria-hidden', 'true');
+      const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      shape.setAttribute('d', path);
+      svg.append(shape);
+      control.append(svg);
+      actions.append(control);
+    }
+    heading.append(actions);
+  }
+  card.append(heading);
   const meta = el('div', undefined, 'meta');
   if (c.status !== 'ready') meta.append(badge(c.status));
   if (!day) meta.append(document.createTextNode(`Vloženo ${date(c.createdAt)}`));
@@ -166,7 +202,8 @@ async function renderCurrent(day) {
   $('day-conversations').hidden = !totalsForDay.conversations;
   const list = $('current-conversations');
   list.replaceChildren();
-  for (const c of dayRows(day).sort((a, b) => b.id - a.id)) list.append(conversationCard(c, day));
+  for (const c of dayRows(day).sort((a, b) => b.id - a.id))
+    list.append(conversationCard(c, day, day === state.today));
 }
 function renderArchive(days) {
   const archive = $('archive');

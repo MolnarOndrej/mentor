@@ -6,4 +6,6 @@ public interface IConversationRepository
     Conversation? FindConversation(long id);
     (Conversation Conversation, bool Added) Add(string url);
     bool Retry(long id);
+    bool RefreshToday(long id, ImportedConversation data);
+    bool DeleteToday(long id);
 }

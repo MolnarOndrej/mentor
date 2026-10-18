@@ -15,7 +15,8 @@ public sealed class WorkProcessor(
     IConversationAnalyzer analyzer,
     TimeProvider clock,
     MentorTelemetry telemetry,
-    ILogger<WorkProcessor> logger)
+    ILogger<WorkProcessor> logger,
+    ConversationRefresher refresher)
 {
     public async Task<bool> ProcessNextAsync(CancellationToken cancellationToken)
     {
@@ -40,6 +41,11 @@ public sealed class WorkProcessor(
         await ExecuteJobAsync("analysis", batch.Value.Id, async () =>
         {
             var input = batch.Value.Input;
+            if (input.Day == DailySchedule.Day(clock.GetUtcNow()))
+            {
+                await refresher.RefreshDayAsync(input.Day, cancellationToken);
+                input = queue.RefreshAnalysisInput(batch.Value.Id);
+            }
             var result = input.Conversations.Count == 0
                 ? "Pro tento den nejsou uložené žádné zprávy. Neúspěšné importy nejsou součástí rozboru."
                 : await analyzer.AnalyzeAsync(input, cancellationToken);

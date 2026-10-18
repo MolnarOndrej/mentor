@@ -77,6 +77,7 @@ table[timeValue] = "invalid timestamp";
 Check(ChatGptShareParser.Parse("streamController.enqueue(" + JsonSerializer.Serialize(JsonSerializer.Serialize(table)) + ")").Messages.SequenceEqual(parsed.Messages), "invalid source timestamps are ignored");
 table[timeKey] = "create_time";
 await CodexImportChecks.RunAsync(Check);
+await RefreshChecks.RunAsync(Check);
 InsertionDayChecks.Run(Check);
 await RuntimeSettingsChecks.RunAsync(Check);
 if (args.FirstOrDefault() is "--codex-share" or "--codex-url")

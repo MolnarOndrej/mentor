@@ -42,7 +42,7 @@ export class PromptEditor {
   }
 
   async prepare(day) {
-    if (this.#data && this.#day !== day) await this.#load(day);
+    await this.#load(day);
     return { day, prompt: $('prompt').value, data: this.#data };
   }
 

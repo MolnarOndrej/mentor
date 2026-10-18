@@ -12,7 +12,8 @@ public sealed class MentorService(
     ISettingsRepository settings,
     IWorkQueue queue,
     IConversationImporter importer,
-    TimeProvider clock)
+    TimeProvider clock,
+    ConversationRefresher refresher)
 {
     public MentorState GetState()
     {
@@ -26,7 +27,7 @@ public sealed class MentorService(
             var day = DailySchedule.Day(DateTimeOffset.Parse(c.CreatedAt));
             return new ConversationSummary(
                 c.Id, c.Url, c.Title, c.Status, c.Error, c.CreatedAt, c.ImportedAt, c.Messages.Count,
-                c.Messages.Count == 0 ? [] : [new DayCoverage(day, c.Messages.Count,
+                [new DayCoverage(day, c.Messages.Count,
                     c.Messages.Count(m => coverage.TryGetValue(day, out var keys) &&
                         keys.Contains(DailyAnalysisPolicy.MessageKey(c.Id, m))))]);
         }).ToList();
@@ -38,6 +39,14 @@ public sealed class MentorService(
 
     public Conversation? GetConversation(long id) => conversations.FindConversation(id);
     public Analysis? GetAnalysis(long id) => analyses.FindAnalysis(id);
+    public Task<RefreshConversationResult> RefreshConversationAsync(long id, CancellationToken cancellationToken) =>
+        refresher.RefreshAsync(id, cancellationToken);
+
+    public void DeleteConversation(long id)
+    {
+        if (!conversations.DeleteToday(id))
+            throw new ArgumentException("Smazat lze pouze dnešní konverzace.");
+    }
     public string? GetFullPrompt(long id) => analyses.FullPrompt(id);
 
     public RuntimeSettings SaveRuntimeSettings(RuntimeSettings value)

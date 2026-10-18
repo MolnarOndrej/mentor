@@ -13,7 +13,7 @@ internal static class InsertionDayChecks
         var clock = new TestClock(LocalTime.At("2026-10-17T23:59:00"));
         var path = Path.Combine(Path.GetTempPath(), "mentor-insertion-" + Guid.NewGuid(), "mentor.db");
         var store = TestRepository.Create(path, "Prompt\n{{data}}", clock);
-        var service = new MentorService(store, store, store, store, new TestImporter(), clock);
+        var service = new MentorService(store, store, store, store, new TestImporter(), clock, new ConversationRefresher(store, new TestImporter(), clock));
         const string chatGptUrl = "https://chatgpt.com/share/00000000-0000-0000-0000-000000000001";
         var first = service.AddConversation(chatGptUrl);
         store.ClaimImport();

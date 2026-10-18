@@ -145,6 +145,31 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         return true;
     });
 
+    public bool RefreshToday(long id, ImportedConversation data) => Write(db =>
+    {
+        var entity = db.Conversations.SingleOrDefault(x => x.Id == id);
+        if (entity == null || !IsToday(entity) || entity.Status is "queued" or "importing")
+            return false;
+        entity.Title = data.Title;
+        entity.Messages = data.Messages;
+        entity.Status = "ready";
+        entity.ImportedAt = Now();
+        entity.Error = null;
+        return true;
+    });
+
+    public bool DeleteToday(long id) => Write(db =>
+    {
+        var entity = db.Conversations.SingleOrDefault(x => x.Id == id);
+        if (entity == null || !IsToday(entity))
+            return false;
+        db.Conversations.Remove(entity);
+        return true;
+    });
+
+    private bool IsToday(ConversationEntity entity) =>
+        DailySchedule.Day(DateTimeOffset.Parse(entity.CreatedAt)) == DailySchedule.Day(clock.GetUtcNow());
+
     public Conversation? ClaimImport() => Write(db =>
     {
         var entity = db.Conversations.Where(x => x.Status == "queued").OrderBy(x => x.Id).FirstOrDefault();
@@ -235,6 +260,17 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         entity.MessageKeys = input.Conversations.SelectMany(c => c.Messages.Select(m => MessageKey(c.Id, m))).ToList();
         entity.FullPrompt = AnalysisPrompt.Build(input);
     }
+
+    public AnalysisInput RefreshAnalysisInput(long id) => Write(db =>
+    {
+        var entity = db.Analyses.Single(x => x.Id == id && x.Status == "running");
+        var input = new AnalysisInput(entity.Day, entity.Prompt, SelectDay(ReadConversations(db), entity.Day));
+        Snapshot(entity, input);
+        return input with
+        {
+            FullPrompt = entity.FullPrompt
+        };
+    });
 
     public void AnalysisDone(long id, string result) => UpdateAnalysis(id, entity =>
     {

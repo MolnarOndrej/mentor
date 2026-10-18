@@ -1,3 +1,4 @@
+using Mentor.Application.Conversations;
 using System.Net;
 using System.Text;
 using Mentor.Application.Analyses;
@@ -101,7 +102,7 @@ internal static class CodexImportChecks
         store = TestRepository.Create(path, "Prompt\n{{data}}", clock);
         store.Retry(row.Id);
         using var telemetry = new MentorTelemetry();
-        var processor = new WorkProcessor(store, store, importer, new TestAnalyzer(), clock, telemetry, new TestLogger());
+        var processor = new WorkProcessor(store, store, importer, new TestAnalyzer(), clock, telemetry, new TestLogger(), new ConversationRefresher(store, importer, clock));
         await processor.ProcessNextAsync(default);
         check(store.FindConversation(row.Id)! is { Status: "ready", Messages.Count: 4 } saved &&
             DailyAnalysisPolicy.SelectDay([saved], "2026-10-18").Count == 1 &&

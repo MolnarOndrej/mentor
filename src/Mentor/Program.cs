@@ -1,4 +1,5 @@
 using Mentor.Application.Dashboard;
+using Mentor.Application.Conversations;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Processing;
 using Mentor.Endpoints;
@@ -20,6 +21,7 @@ builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<MentorTelemetry>();
 builder.Services.AddScoped<MentorService>();
+builder.Services.AddScoped<ConversationRefresher>();
 builder.Services.AddScoped<WorkProcessor>();
 builder.Services.AddSingleton<WorkerStatus>();
 builder.Services.AddHostedService<MentorWorker>();
