@@ -45,9 +45,7 @@ const runtimeSettingsEditor = new RuntimeSettingsEditor((saved) => {
   state.settings.runtime = saved;
   configurePolling(saved.pollIntervalSeconds);
 });
-const navigation = new Navigation((page) => {
-  if (page === 'prompt' && state) promptEditor.open(selectedDay || state.today);
-});
+const navigation = new Navigation(() => {});
 const reportCache = new Map();
 let pollTimer, pollInterval;
 function configurePolling(seconds) {
@@ -289,7 +287,6 @@ async function refresh(force = false) {
     if (!initialized) {
       promptEditor.initialize(next.settings.prompt);
       runtimeSettingsEditor.initialize(next.settings.runtime);
-      if (navigation.page === 'prompt') promptEditor.open(selectedDay || next.today);
       initialized = true;
     }
     state = next;

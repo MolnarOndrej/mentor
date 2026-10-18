@@ -88,7 +88,7 @@ assert.equal(error, '');
 assert.equal(save.dirty, false);
 console.log('Autosave checks passed.');
 
-// Exercise the actual editors without a browser, including validation and rendering data.
+// Exercise the actual editors without a browser, including validation and automatic data slots.
 const elements = new Map();
 for (const id of [
   'prompt',
@@ -118,36 +118,43 @@ globalThis.fetch = async (path, options) => {
   if (path === '/api/analyses') assert.equal(elements.get('prompt').disabled, true);
   const body = JSON.parse(options.body);
   requests.push({ path, body });
-  const result =
-    path === '/api/prompt/render'
-      ? { prompt: body.prompt.replace('{{data}}', 'conversation'), data: 'conversation' }
-      : path === '/api/settings'
-        ? body
-        : { template: body.prompt };
+  assert.notEqual(path, '/api/prompt/render');
+  const result = path === '/api/settings' ? body : { template: body.prompt };
   return { ok: true, text: async () => JSON.stringify(result) };
 };
 const { PromptEditor } = await import('../src/Mentor/wwwroot/prompt-editor.js');
 const editor = new PromptEditor();
-editor.initialize('Coach {{data}}');
-elements.get('prompt').value = 'Changed {{data}}';
+editor.initialize('Coach\n\nVSTUPNÍ DATA (JSON):\r\n{{data}}\r\n');
+assert.equal(elements.get('prompt').value, 'Coach');
+assert.equal(
+  elements.get('prompt').maxLength,
+  20_000 - '\n\nVSTUPNÍ DATA (JSON):\n{{data}}'.length
+);
+elements.get('prompt').value = 'Changed';
 elements.get('prompt').oninput();
-const prepared = await editor.prepare('2026-10-18');
+await editor.analyze('2026-10-18');
 assert.deepEqual(
   requests.map((request) => request.path),
-  ['/api/prompt', '/api/prompt/render']
+  ['/api/prompt', '/api/analyses']
 );
-assert.equal(prepared.prompt, 'Changed conversation');
+assert.deepEqual(requests.at(-1).body, {
+  day: '2026-10-18',
+  prompt: 'Changed\n\nVSTUPNÍ DATA (JSON):\n{{data}}',
+});
+assert.equal(elements.get('prompt').value, 'Changed');
 assert.equal(timers.size, 0);
-elements.get('prompt').value = 'New instructions conversation';
+elements.get('prompt').value = 'New instructions';
 elements.get('prompt').oninput();
 await tick();
 assert.deepEqual(requests.at(-1).body, {
-  prompt: 'New instructions conversation',
-  data: 'conversation',
+  prompt: 'New instructions\n\nVSTUPNÍ DATA (JSON):\n{{data}}',
 });
 await editor.analyze('2026-10-18');
 assert.equal(requests.at(-1).path, '/api/analyses');
 assert.equal(elements.get('prompt').disabled, false);
+// All editable text survives even when the stored data slot was inside the template.
+editor.initialize('Before\n{{data}}\nAfter');
+assert.equal(elements.get('prompt').value, 'Before\n\nAfter');
 
 const { RuntimeSettingsEditor } = await import('../src/Mentor/wwwroot/runtime-settings-editor.js');
 let settings;
