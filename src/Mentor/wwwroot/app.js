@@ -112,9 +112,6 @@ async function reportDetails(a) {
   if (a.status === 'completed') reportCache.set(a.id, full);
   return full;
 }
-function attemptSummary(a) {
-  return `#${a.id} · ${labels[a.status]} · ${date(a.createdAt)} · ${a.conversationIds.length} konverzací / ${a.messageCount} zpráv`;
-}
 async function fillAttempt(container, a) {
   const full = await reportDetails(a);
   container.replaceChildren();
@@ -136,28 +133,6 @@ async function fillAttempt(container, a) {
     tools.append(button(`Konverzace #${id}`, () => showConversation(id), 'link-button'));
   details.append(tools);
   container.append(details);
-}
-function attemptsList(attempts) {
-  const box = el('div');
-  for (const a of attempts) {
-    const details = el('details');
-    details.dataset.key = `attempt-${a.id}`;
-    details.append(el('summary', attemptSummary(a)));
-    const content = el('div');
-    details.append(content);
-    let loaded = false;
-    details.ontoggle = () => {
-      if (details.open && !loaded) {
-        loaded = true;
-        fillAttempt(content, a).catch((e) => {
-          loaded = false;
-          content.replaceChildren(el('p', e.message, 'error'));
-        });
-      }
-    };
-    box.append(details);
-  }
-  return box;
 }
 async function renderCurrent(day) {
   const totalsForDay = totals(day),
@@ -224,15 +199,14 @@ function renderArchive(days) {
   $('archive-count').textContent = `${days.length} dní · ${state.conversations.length} konverzací`;
   for (const day of days) {
     const t = totals(day),
-      pending = t.messages - t.analyzed,
-      attempts = state.analyses.filter((a) => a.day === day).sort((a, b) => b.id - a.id);
+      pending = t.messages - t.analyzed;
     const group = el('details');
     group.dataset.key = `day-${day}`;
     const summary = el('summary');
     const line = el('span', undefined, 'day-summary');
     line.append(
       el('span', dayLabel(day)),
-      el('span', `${t.conversations} konverzací · ${attempts.length} verzí rozboru`, 'subtle'),
+      el('span', `${t.conversations} konverzací`, 'subtle'),
       badge(
         pending ? 'queued' : 'completed',
         pending ? `${pending} zpráv čeká` : t.messages ? 'Analyzováno' : 'Bez zpráv'
@@ -246,8 +220,6 @@ function renderArchive(days) {
     );
     for (const c of dayRows(day).sort((a, b) => b.id - a.id))
       group.append(conversationCard(c, day));
-    if (attempts.length)
-      group.append(el('h3', 'Verze rozboru · od nejnovější'), attemptsList(attempts));
     archive.append(group);
   }
   if (!days.length) archive.append(el('p', 'Zde budou přibývat jednotlivé dny.', 'empty'));
