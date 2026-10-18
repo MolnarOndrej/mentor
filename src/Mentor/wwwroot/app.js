@@ -79,29 +79,8 @@ function conversationCard(c, day) {
   card.append(button(`#${c.id} · ${c.title}`, () => showConversation(c.id), 'link-button'));
   const meta = el('div', undefined, 'meta');
   if (c.status !== 'ready') meta.append(badge(c.status));
-  if (day) {
-    const d = c.days.find((d) => d.day === day);
-    const active = state.analyses.find(
-      (a) => a.day === day && ['queued', 'running'].includes(a.status)
-    );
-    meta.append(
-      badge(
-        active?.status || 'ready',
-        active
-          ? labels[active.status]
-          : d.analyzedCount === d.messageCount
-            ? 'Analyzováno'
-            : 'Čeká na denní rozbor'
-      ),
-      document.createTextNode(
-        `${d.analyzedCount}/${d.messageCount} zpráv zahrnuto v úspěšném rozboru`
-      )
-    );
-  } else
-    meta.append(
-      document.createTextNode(`Vloženo ${date(c.createdAt)} · ${c.messageCount} uložených zpráv`)
-    );
-  card.append(meta);
+  if (!day) meta.append(document.createTextNode(`Vloženo ${date(c.createdAt)}`));
+  if (meta.childNodes.length) card.append(meta);
   if (c.error) card.append(el('p', c.error, 'error'));
   if (c.status === 'failed')
     card.append(button('Zkusit načíst znovu', () => api(`conversations/${c.id}/retry`, 'POST')));
