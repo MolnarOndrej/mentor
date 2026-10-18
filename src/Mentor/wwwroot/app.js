@@ -131,8 +131,8 @@ async function renderCurrent(day) {
     day === state.today ? 'Dnešní rozbor' : `Rozbor · ${dayLabel(day)}`;
   $('report-date').textContent = day === state.today ? dayLabel(day) : '';
   $('back-today').hidden = day === state.today;
-  $('day-status').textContent = totalsForDay.messages
-    ? `${totalsForDay.conversations} konverzací · ${pending ? `${pending} zpráv čeká` : 'vše analyzováno'}`
+  $('day-status').textContent = totalsForDay.conversations
+    ? `${totalsForDay.conversations} konverzací`
     : '';
   const attempts = state.analyses.filter((a) => a.day === day).sort((a, b) => b.id - a.id),
     latest = attempts[0],
@@ -271,9 +271,7 @@ async function showConversation(id) {
   $('conversation-title').textContent = `#${c.id} · ${c.title}`;
   const content = $('conversation-content');
   content.replaceChildren();
-  content.append(
-    el('p', `Vloženo ${date(c.createdAt)} · Rozbor podle dne vložení odkazu.`, 'hint')
-  );
+  content.append(el('p', `Vloženo ${date(c.createdAt)}`, 'hint'));
   const messages = c.messages;
   if (!messages.length)
     content.append(el('p', c.error || 'Pro vybraný den nejsou dostupné zprávy.'));

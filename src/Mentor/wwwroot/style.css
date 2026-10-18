@@ -239,6 +239,14 @@ details[open] > summary {
 .card:first-child {
   border-top: 0;
 }
+#day-conversations[open] > summary {
+  margin-bottom: 4px;
+}
+#current-conversations .card {
+  border: 0;
+  margin: 0;
+  padding: 2px 0;
+}
 .empty {
   color: #7b867c;
   padding: 24px 0;
