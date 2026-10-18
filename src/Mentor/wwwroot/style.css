@@ -292,6 +292,17 @@ dialog {
 dialog::backdrop {
   background: #18372c66;
 }
+#delete-conversation-dialog {
+  width: fit-content;
+  max-width: min(440px, calc(100% - 32px));
+  padding: 24px;
+}
+#delete-conversation-description {
+  margin: 0 0 20px;
+  font-size: 18px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 #conversation-dialog {
   padding: 0;
   overflow: hidden;
