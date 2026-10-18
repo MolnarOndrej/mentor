@@ -141,11 +141,10 @@
         <h2 id="runtime-settings-heading">Nastavení</h2>
         <form id="runtime-settings-form">
           <label for="poll-interval">Interval pollování (sekundy)</label>
-          <input id="poll-interval" type="number" min="1" max="3600" step="1" required />
+          <input id="poll-interval" type="number" min="1" max="3600" step="1" required disabled />
           <label for="daily-time">Čas automatického rozboru</label>
-          <input id="daily-time" type="time" step="60" required />
+          <input id="daily-time" type="time" step="60" required disabled />
           <p id="runtime-settings-error" class="error" role="alert"></p>
-          <div class="actions"><button type="submit" disabled>Uložit nastavení</button></div>
         </form>
       </section>
       <section id="prompt-page" data-view="prompt" aria-labelledby="prompt-heading" hidden>
@@ -153,8 +152,7 @@
         <form id="prompt-form">
           <label for="prompt" class="sr-only">Celý prompt</label
           ><textarea id="prompt" rows="22" maxlength="240000" required disabled></textarea>
-          <p id="prompt-status" class="hint" role="status"></p>
-          <div class="actions"><button type="submit" disabled>Uložit instrukce</button></div>
+          <p id="prompt-error" class="error" role="alert"></p>
         </form>
       </section>
       <section id="archive-page" data-view="archive" aria-labelledby="archive-heading" hidden>

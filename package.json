@@ -5,7 +5,7 @@
   "scripts": {
     "format:ui": "prettier --write \"src/Mentor/wwwroot/**/*.{js,css,html}\"",
     "check:ui": "prettier --check \"src/Mentor/wwwroot/**/*.{js,css,html}\"",
-    "test:ui": "node scripts/analysis-control-checks.mjs"
+    "test:ui": "node scripts/analysis-control-checks.mjs && node scripts/auto-save-checks.mjs"
   },
   "devDependencies": {
     "prettier": "3.9.10"

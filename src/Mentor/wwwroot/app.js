@@ -3,6 +3,7 @@ import { $, date, dayLabel, el, formatted } from './dom.js';
 import { PromptEditor } from './prompt-editor.js';
 import { analysisControl } from './analysis-control.js';
 import { Navigation } from './navigation.js';
+import { RuntimeSettingsEditor } from './runtime-settings-editor.js';
 const labels = {
   queued: 'Ve frontě',
   importing: 'Načítání',
@@ -40,6 +41,10 @@ let state,
 let updatingConversations = false;
 let openConversation = null;
 const promptEditor = new PromptEditor();
+const runtimeSettingsEditor = new RuntimeSettingsEditor((saved) => {
+  state.settings.runtime = saved;
+  configurePolling(saved.pollIntervalSeconds);
+});
 const navigation = new Navigation((page) => {
   if (page === 'prompt' && state) promptEditor.open(selectedDay || state.today);
 });
@@ -283,9 +288,7 @@ async function refresh(force = false) {
     const next = await api('state');
     if (!initialized) {
       promptEditor.initialize(next.settings.prompt);
-      $('poll-interval').value = next.settings.runtime.pollIntervalSeconds;
-      $('daily-time').value = next.settings.runtime.dailyTime;
-      $('runtime-settings-form').querySelector('button[type="submit"]').disabled = false;
+      runtimeSettingsEditor.initialize(next.settings.runtime);
       if (navigation.page === 'prompt') promptEditor.open(selectedDay || next.today);
       initialized = true;
     }
@@ -363,24 +366,6 @@ $('conversation-dialog').addEventListener('close', () => {
   openConversation = null;
 });
 $('close-prompt').onclick = () => $('prompt-dialog').close();
-$('runtime-settings-form').onsubmit = async (e) => {
-  e.preventDefault();
-  e.submitter.disabled = true;
-  $('runtime-settings-error').textContent = '';
-  try {
-    const saved = await api('settings', 'PUT', {
-      pollIntervalSeconds: Number($('poll-interval').value),
-      dailyTime: $('daily-time').value,
-    });
-    state.settings.runtime = saved;
-    configurePolling(saved.pollIntervalSeconds);
-    notice('Nastavení bylo uloženo.');
-  } catch (error) {
-    $('runtime-settings-error').textContent = error.message;
-  } finally {
-    e.submitter.disabled = false;
-  }
-};
 $('back-today').onclick = () => selectDay(state.today);
 $('day').onchange = () => {
   if ($('day').value) selectDay($('day').value);
@@ -404,9 +389,7 @@ $('analyze').onclick = async () => {
   b.disabled = true;
   try {
     selectedDay = $('day').value;
-    const input = await promptEditor.prepare(selectedDay);
-    await api('analyses', 'POST', input);
-    promptEditor.markSaved();
+    await promptEditor.analyze(selectedDay);
     notice('');
     await refresh(true);
   } catch (e) {
