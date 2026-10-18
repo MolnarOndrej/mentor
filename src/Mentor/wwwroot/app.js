@@ -4,6 +4,7 @@ import { PromptEditor } from './prompt-editor.js';
 import { analysisControl } from './analysis-control.js';
 import { Navigation } from './navigation.js';
 import { RuntimeSettingsEditor } from './runtime-settings-editor.js';
+import { ArchiveCalendar } from './archive-calendar.js';
 const labels = {
   queued: 'Ve frontě',
   importing: 'Načítání',
@@ -46,6 +47,9 @@ const runtimeSettingsEditor = new RuntimeSettingsEditor((saved) => {
   configurePolling(saved.pollIntervalSeconds);
 });
 const navigation = new Navigation(() => {});
+const archiveCalendar = new ArchiveCalendar($('archive'), (list, day) => {
+  for (const c of dayRows(day)) list.append(conversationCard(c, day, false, true));
+});
 const reportCache = new Map();
 let pollTimer, pollInterval;
 function configurePolling(seconds) {
@@ -143,13 +147,13 @@ function conversationActions(c) {
 function renderConversationActions() {
   const actions = $('conversation-dialog-actions');
   actions.replaceChildren();
-  if (openConversation?.day === state.today)
+  if (openConversation?.day === state.today && !openConversation.readOnly)
     actions.append(conversationActions(openConversation.conversation));
 }
-function conversationCard(c, day, editable = false) {
+function conversationCard(c, day, editable = false, readOnly = false) {
   const card = el('div', undefined, 'card');
   const heading = el('div', undefined, 'conversation-heading');
-  heading.append(button(c.title, () => showConversation(c.id, day), 'link-button'));
+  heading.append(button(c.title, () => showConversation(c.id, day, readOnly), 'link-button'));
   if (editable) heading.append(conversationActions(c));
   card.append(heading);
   const meta = el('div', undefined, 'meta');
@@ -249,36 +253,6 @@ async function renderCurrent(day) {
   list.replaceChildren();
   for (const c of dayRows(day)) list.append(conversationCard(c, day, day === state.today));
 }
-function renderArchive(days) {
-  const archive = $('archive');
-  archive.replaceChildren();
-  $('archive-count').textContent = `${days.length} dní · ${state.conversations.length} konverzací`;
-  for (const day of days) {
-    const t = totals(day),
-      pending = t.messages - t.analyzed;
-    const group = el('details');
-    group.dataset.key = `day-${day}`;
-    const summary = el('summary');
-    const line = el('span', undefined, 'day-summary');
-    line.append(
-      el('span', dayLabel(day)),
-      el('span', `${t.conversations} konverzací`, 'subtle'),
-      badge(
-        pending ? 'queued' : 'completed',
-        pending ? `${pending} zpráv čeká` : t.messages ? 'Analyzováno' : 'Bez zpráv'
-      )
-    );
-    summary.append(line);
-    group.append(summary);
-    group.append(
-      button('Otevřít denní rozbor', () => selectDay(day)),
-      el('p', 'Konverzace', 'hint')
-    );
-    for (const c of dayRows(day)) group.append(conversationCard(c, day));
-    archive.append(group);
-  }
-  if (!days.length) archive.append(el('p', 'Zde budou přibývat jednotlivé dny.', 'empty'));
-}
 async function refresh(force = false) {
   if (refreshing) return;
   refreshing = true;
@@ -292,17 +266,10 @@ async function refresh(force = false) {
     state = next;
     renderConversationActions();
     configurePolling(state.settings.runtime.pollIntervalSeconds);
-    const days = [
-      ...new Set([
-        ...state.conversations.flatMap((c) => c.days.map((d) => d.day)),
-        ...state.analyses.map((a) => a.day),
-      ]),
-    ]
-      .sort()
-      .reverse();
     const day = selectedDay || state.today;
     const signature = JSON.stringify([
       day,
+      state.today,
       state.conversations,
       state.analyses,
       state.changedDays,
@@ -313,19 +280,11 @@ async function refresh(force = false) {
       [...document.querySelectorAll('details[data-key][open]')].map((e) => e.dataset.key)
     );
     await renderCurrent(day);
-    renderArchive(days);
+    archiveCalendar.update(state.today, state.analyses);
     for (const d of document.querySelectorAll('details[data-key]'))
       if (open.has(d.dataset.key)) d.open = true;
     const imports = $('import-status');
     imports.replaceChildren();
-    const waitingDays = state.changedDays;
-    $('archive-pending-count').textContent = waitingDays.length;
-    $('archive-pending-count').hidden = !waitingDays.length;
-    const archiveLabel = waitingDays.length
-      ? `Archiv · ${waitingDays.length} dní čeká na rozbor`
-      : 'Archiv · Starší dny a rozbory';
-    $('open-archive').setAttribute('aria-label', archiveLabel);
-    $('open-archive').title = archiveLabel;
     const loading = state.conversations.filter((c) =>
       ['queued', 'importing'].includes(c.status)
     ).length;
@@ -340,9 +299,9 @@ async function refresh(force = false) {
     refreshing = false;
   }
 }
-async function showConversation(id, day) {
+async function showConversation(id, day, readOnly = false) {
   const c = await api('conversations/' + id);
-  openConversation = { conversation: c, day };
+  openConversation = { conversation: c, day, readOnly };
   renderConversationActions();
   $('conversation-title').textContent = c.title;
   const content = $('conversation-content');

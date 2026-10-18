@@ -67,7 +67,6 @@
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M3 3h18v5H3zM5 8v13h14V8M9 12h6" />
             </svg>
-            <span id="archive-pending-count" class="icon-count" hidden></span>
             <span>Archiv</span>
           </a>
         </nav>
@@ -156,9 +155,12 @@
         </form>
       </section>
       <section id="archive-page" data-view="archive" aria-labelledby="archive-heading" hidden>
-        <h2 id="archive-heading">Archiv</h2>
-        <label for="day">Otevřít den</label><input id="day" type="date" />
-        <p id="archive-count" class="hint"></p>
+        <div class="section-head archive-heading">
+          <h2 id="archive-heading">Archiv</h2>
+          <div class="archive-day-picker">
+            <label for="day">Otevřít den</label><input id="day" type="date" />
+          </div>
+        </div>
         <div id="archive"></div>
       </section>
     </main>
