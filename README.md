@@ -18,6 +18,8 @@ Otevřete http://127.0.0.1:5178. Alternativně: `dotnet run --project src/Mentor
 
 ## Použití
 
+Pod nadpisem Mentor je stálá navigace **Přehled, Nastavení, Zadání AI a Archiv**. Každá sekce má vlastní ikonu a adresu (`#/overview`, `#/settings`, `#/prompt`, `#/archive`); aktivní sekce je zvýrazněná. Na přehled se vrátíte i kliknutím na nadpis Mentor. Funguje historie prohlížeče i obnovení otevřené sekce. Přepínání zachová rozepsané formuláře, vybraný den a pozici v jednotlivých sekcích; neuložené úpravy se při obnovení celé stránky zahodí.
+
 1. Vložte veřejný sdílený odkaz na konverzaci ChatGPT (`https://chatgpt.com/share/<id>`) nebo Codexu (`https://chatgpt.com/s/cx_<id>`). Import začne na pozadí hned po uložení.
 2. Po stavu „Uloženo“ je v databázi kopie zpráv i zdrojový odkaz. Před každým dnešním rozborem se všechny dnešní odkazy znovu načtou. Nedostupný nebo smazaný odkaz ponechá poslední uloženou kopii. Kliknutím na název zobrazíte uložené zprávy s autory a pořadím.
 3. Pod vložením odkazu je dnešní rozbor. Klikněte na „Analyzovat“ nebo nechte aplikaci běžet do nastaveného času (výchozí 22:00 v systémovém časovém pásmu). Starší den otevřete tlačítkem „Archiv“ nahoře; tlačítko „Dnes“ vás vrátí zpět.

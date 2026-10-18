@@ -14,6 +14,9 @@
 body {
   margin: 0;
 }
+[hidden] {
+  display: none !important;
+}
 main {
   max-width: 1080px;
   padding: 42px 28px;
@@ -28,11 +31,38 @@ header,
 }
 header {
   margin-bottom: 24px;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
 }
 nav {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+h1 a {
+  color: inherit;
+  text-decoration: none;
+}
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.nav-link[aria-current='page'] {
+  background: #2c5142;
+  color: #fff;
+}
+.nav-link:focus-visible,
+h1 a:focus-visible {
+  outline: 2px solid #759a82;
+  outline-offset: 3px;
 }
 header h1 {
   margin: 0;
@@ -61,6 +91,9 @@ h2 {
     25px Georgia,
     serif;
   margin: 0 0 14px;
+}
+[data-view] h2[tabindex='-1']:focus {
+  outline: none;
 }
 h3 {
   font-size: 16px;
@@ -134,7 +167,8 @@ button:disabled {
   height: 44px;
   padding: 10px;
 }
-.icon-button svg {
+.icon-button svg,
+.nav-link svg {
   width: 22px;
   height: 22px;
   fill: none;
@@ -397,7 +431,7 @@ dialog::backdrop {
 #analyze[aria-busy='true'] {
   cursor: wait;
 }
-#archive-dialog > #day {
+#archive-page > #day {
   width: auto;
 }
 #current-report .empty {
@@ -415,8 +449,13 @@ dialog::backdrop {
   .section-head {
     gap: 12px;
   }
-  nav button {
-    padding: 10px 12px;
+  nav {
+    width: 100%;
+    gap: 6px;
+  }
+  .nav-link {
+    justify-content: center;
+    flex: 1 1 calc(50% - 6px);
   }
   .input-row {
     gap: 8px;

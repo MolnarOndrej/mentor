@@ -14,7 +14,6 @@ export class PromptEditor {
           ? 'Zadání je uložené.'
           : 'Neuložené úpravy · uloží se také při spuštění analýzy.';
     };
-    $('close-settings').onclick = () => $('settings-dialog').close();
     $('prompt-form').onsubmit = async (event) => {
       event.preventDefault();
       try {
@@ -29,11 +28,13 @@ export class PromptEditor {
   initialize(template) {
     $('prompt').value = template;
     this.#saved = template;
+    $('prompt').disabled = false;
+    $('prompt-form').querySelector('button[type="submit"]').disabled = false;
   }
 
   open(day) {
-    $('settings-dialog').showModal();
-    this.#load(day).catch(() => {}); // The dialog shows the actual error; keep the draft.
+    if (this.#day === day) return;
+    this.#load(day).catch(() => {}); // The editor shows the actual error; keep the draft.
   }
 
   markSaved() {

@@ -10,14 +10,30 @@
   <body>
     <main>
       <header>
-        <h1>Mentor<span>.</span></h1>
-        <nav aria-label="Další možnosti">
-          <button
+        <h1>
+          <a href="#/overview" id="home-link">Mentor<span>.</span></a>
+        </h1>
+        <nav aria-label="Hlavní navigace">
+          <a
+            href="#/overview"
+            id="open-overview"
+            class="secondary nav-link"
+            data-page="overview"
+            aria-current="page"
+            title="Přehled"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-8h6v8" />
+            </svg>
+            <span>Přehled</span>
+          </a>
+          <a
+            href="#/settings"
+            data-page="settings"
             id="open-runtime-settings"
-            class="secondary icon-button"
+            class="secondary nav-link"
             aria-label="Nastavení"
             title="Nastavení"
-            disabled
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path
@@ -25,20 +41,26 @@
               />
               <circle cx="12" cy="12" r="3" />
             </svg>
-          </button>
-          <button
+            <span>Nastavení</span>
+          </a>
+          <a
+            href="#/prompt"
+            data-page="prompt"
             id="open-settings"
-            class="secondary icon-button"
+            class="secondary nav-link"
             aria-label="Zadání AI"
             title="Zadání AI"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M14 3H5v18h14v-9M8 8h3M8 12h3M8 16h7M15 7l2 2 5-5-2-2z" />
             </svg>
-          </button>
-          <button
+            <span>Zadání AI</span>
+          </a>
+          <a
+            href="#/archive"
+            data-page="archive"
             id="open-archive"
-            class="secondary icon-button"
+            class="secondary nav-link"
             aria-label="Archiv"
             title="Archiv"
           >
@@ -46,66 +68,104 @@
               <path d="M3 3h18v5H3zM5 8v13h14V8M9 12h6" />
             </svg>
             <span id="archive-pending-count" class="icon-count" hidden></span>
-          </button>
+            <span>Archiv</span>
+          </a>
         </nav>
       </header>
       <div id="notice" role="status" aria-live="polite"></div>
-      <section class="import">
-        <form id="import-form">
-          <label for="url">Přidat konverzaci</label>
-          <div class="input-row">
-            <input
-              id="url"
-              type="url"
-              required
-              placeholder="Vložte sdílený odkaz na konverzaci"
-            /><button type="submit" class="icon-button" aria-label="Přidat" title="Přidat">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
+      <div id="overview-page" data-view="overview">
+        <section class="import">
+          <form id="import-form">
+            <label for="url">Přidat konverzaci</label>
+            <div class="input-row">
+              <input
+                id="url"
+                type="url"
+                required
+                placeholder="Vložte sdílený odkaz na konverzaci"
+              /><button type="submit" class="icon-button" aria-label="Přidat" title="Přidat">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+            </div>
+          </form>
+          <div id="import-status"></div>
+        </section>
+        <section class="current">
+          <div class="section-head">
+            <div>
+              <h2 id="report-heading">Dnešní rozbor</h2>
+              <span id="report-date" class="hint"></span>
+            </div>
+            <div class="actions">
+              <button id="back-today" class="secondary" hidden>Dnes</button
+              ><button
+                id="refresh-today"
+                class="secondary icon-button"
+                aria-label="Aktualizovat konverzace"
+                title="Aktualizovat konverzace"
+                disabled
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M20 4v6h-6 M20 10a8 8 0 1 0-2 8" />
+                </svg></button
+              ><button
+                id="analyze"
+                class="icon-button"
+                aria-label="Analyzovat"
+                title="Analyzovat"
+                disabled
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    d="m14 3 1.8 5.2L21 10l-5.2 1.8L14 17l-1.8-5.2L7 10l5.2-1.8zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
+          <div id="current-report"></div>
+          <details id="day-conversations">
+            <summary id="day-conversations-heading">Konverzace dne</summary>
+            <div id="current-conversations"></div>
+          </details>
+        </section>
+      </div>
+      <section
+        id="runtime-settings-page"
+        data-view="settings"
+        aria-labelledby="runtime-settings-heading"
+        hidden
+      >
+        <h2 id="runtime-settings-heading">Nastavení</h2>
+        <form id="runtime-settings-form">
+          <label for="poll-interval">Interval pollování (sekundy)</label>
+          <input id="poll-interval" type="number" min="1" max="3600" step="1" required />
+          <label for="daily-time">Čas automatického rozboru</label>
+          <input id="daily-time" type="time" step="60" required />
+          <p id="runtime-settings-error" class="error" role="alert"></p>
+          <div class="actions"><button type="submit" disabled>Uložit nastavení</button></div>
         </form>
-        <div id="import-status"></div>
       </section>
-      <section class="current">
-        <div class="section-head">
-          <div>
-            <h2 id="report-heading">Dnešní rozbor</h2>
-            <span id="report-date" class="hint"></span>
-          </div>
-          <div class="actions">
-            <button id="back-today" class="secondary" hidden>Dnes</button
-            ><button
-              id="refresh-today"
-              class="secondary icon-button"
-              aria-label="Aktualizovat konverzace"
-              title="Aktualizovat konverzace"
-              disabled
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M20 4v6h-6 M20 10a8 8 0 1 0-2 8" />
-              </svg></button
-            ><button
-              id="analyze"
-              class="icon-button"
-              aria-label="Analyzovat"
-              title="Analyzovat"
-              disabled
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path
-                  d="m14 3 1.8 5.2L21 10l-5.2 1.8L14 17l-1.8-5.2L7 10l5.2-1.8zM5 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div id="current-report"></div>
-        <details id="day-conversations">
-          <summary id="day-conversations-heading">Konverzace dne</summary>
-          <div id="current-conversations"></div>
-        </details>
+      <section id="prompt-page" data-view="prompt" aria-labelledby="prompt-heading" hidden>
+        <h2 id="prompt-heading">Zadání AI</h2>
+        <p class="hint">
+          Před dnešním rozborem se konverzace načtou znovu z uložených odkazů. Data v promptu se
+          aktualizují; nedostupné odkazy ponechají uložený obsah.
+        </p>
+        <form id="prompt-form">
+          <label for="prompt" class="sr-only">Celý prompt</label
+          ><textarea id="prompt" rows="22" maxlength="240000" required disabled></textarea>
+          <p id="prompt-status" class="hint" role="status"></p>
+          <div class="actions"><button type="submit" disabled>Uložit zadání</button></div>
+        </form>
+      </section>
+      <section id="archive-page" data-view="archive" aria-labelledby="archive-heading" hidden>
+        <h2 id="archive-heading">Archiv</h2>
+        <label for="day">Otevřít den</label><input id="day" type="date" />
+        <p id="archive-count" class="hint"></p>
+        <div id="archive"></div>
       </section>
     </main>
     <dialog id="delete-conversation-dialog" aria-labelledby="delete-conversation-description">
@@ -114,56 +174,6 @@
         <button value="cancel" class="secondary" autofocus>Zrušit</button>
         <button value="delete">Odstranit</button>
       </form>
-    </dialog>
-    <dialog id="runtime-settings-dialog" aria-labelledby="runtime-settings-heading">
-      <button
-        id="close-runtime-settings"
-        class="secondary close"
-        aria-label="Zavřít"
-        title="Zavřít"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="m6 6 12 12M6 18 18 6" />
-        </svg>
-      </button>
-      <h2 id="runtime-settings-heading">Nastavení</h2>
-      <form id="runtime-settings-form">
-        <label for="poll-interval">Interval pollování (sekundy)</label>
-        <input id="poll-interval" type="number" min="1" max="3600" step="1" required />
-        <label for="daily-time">Čas automatického rozboru</label>
-        <input id="daily-time" type="time" step="60" required />
-        <p id="runtime-settings-error" class="error" role="alert"></p>
-        <div class="actions"><button type="submit">Uložit nastavení</button></div>
-      </form>
-    </dialog>
-    <dialog id="settings-dialog">
-      <button id="close-settings" class="secondary close" aria-label="Zavřít" title="Zavřít">
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="m6 6 12 12M6 18 18 6" />
-        </svg>
-      </button>
-      <h2>Zadání pro Codex CLI</h2>
-      <p class="hint">
-        Před dnešním rozborem se konverzace načtou znovu z uložených odkazů. Data v promptu se
-        aktualizují; nedostupné odkazy ponechají uložený obsah.
-      </p>
-      <form id="prompt-form">
-        <label for="prompt" class="sr-only">Celý prompt</label
-        ><textarea id="prompt" rows="22" maxlength="240000" required></textarea>
-        <p id="prompt-status" class="hint" role="status"></p>
-        <div class="actions"><button type="submit">Uložit zadání</button></div>
-      </form>
-    </dialog>
-    <dialog id="archive-dialog">
-      <button id="close-archive" class="secondary close" aria-label="Zavřít" title="Zavřít">
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="m6 6 12 12M6 18 18 6" />
-        </svg>
-      </button>
-      <h2>Archiv</h2>
-      <label for="day">Otevřít den</label><input id="day" type="date" />
-      <p id="archive-count" class="hint"></p>
-      <div id="archive"></div>
     </dialog>
     <dialog id="conversation-dialog" aria-labelledby="conversation-title">
       <div class="conversation-dialog-heading">

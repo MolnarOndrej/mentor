@@ -2,6 +2,7 @@ import { api } from './api.js';
 import { $, date, dayLabel, el, formatted } from './dom.js';
 import { PromptEditor } from './prompt-editor.js';
 import { analysisControl } from './analysis-control.js';
+import { Navigation } from './navigation.js';
 const labels = {
   queued: 'Ve frontě',
   importing: 'Načítání',
@@ -39,6 +40,9 @@ let state,
 let updatingConversations = false;
 let openConversation = null;
 const promptEditor = new PromptEditor();
+const navigation = new Navigation((page) => {
+  if (page === 'prompt' && state) promptEditor.open(selectedDay || state.today);
+});
 const reportCache = new Map();
 let pollTimer, pollInterval;
 function configurePolling(seconds) {
@@ -81,9 +85,9 @@ function confirmDelete(c) {
 }
 function selectDay(day) {
   selectedDay = day;
-  if ($('archive-dialog').open) $('archive-dialog').close();
+  navigation.go('overview');
   lastRender = '';
-  refresh(true);
+  refresh(true).catch((e) => notice(e.message));
   $('report-heading').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function conversationActions(c) {
@@ -279,12 +283,15 @@ async function refresh(force = false) {
     const next = await api('state');
     if (!initialized) {
       promptEditor.initialize(next.settings.prompt);
+      $('poll-interval').value = next.settings.runtime.pollIntervalSeconds;
+      $('daily-time').value = next.settings.runtime.dailyTime;
+      $('runtime-settings-form').querySelector('button[type="submit"]').disabled = false;
+      if (navigation.page === 'prompt') promptEditor.open(selectedDay || next.today);
       initialized = true;
     }
     state = next;
     renderConversationActions();
     configurePolling(state.settings.runtime.pollIntervalSeconds);
-    $('open-runtime-settings').disabled = false;
     const days = [
       ...new Set([
         ...state.conversations.flatMap((c) => c.days.map((d) => d.day)),
@@ -356,14 +363,6 @@ $('conversation-dialog').addEventListener('close', () => {
   openConversation = null;
 });
 $('close-prompt').onclick = () => $('prompt-dialog').close();
-$('open-settings').onclick = () => promptEditor.open($('day').value);
-$('open-runtime-settings').onclick = () => {
-  $('poll-interval').value = state.settings.runtime.pollIntervalSeconds;
-  $('daily-time').value = state.settings.runtime.dailyTime;
-  $('runtime-settings-error').textContent = '';
-  $('runtime-settings-dialog').showModal();
-};
-$('close-runtime-settings').onclick = () => $('runtime-settings-dialog').close();
 $('runtime-settings-form').onsubmit = async (e) => {
   e.preventDefault();
   e.submitter.disabled = true;
@@ -375,7 +374,6 @@ $('runtime-settings-form').onsubmit = async (e) => {
     });
     state.settings.runtime = saved;
     configurePolling(saved.pollIntervalSeconds);
-    $('runtime-settings-dialog').close();
     notice('Nastavení bylo uloženo.');
   } catch (error) {
     $('runtime-settings-error').textContent = error.message;
@@ -383,8 +381,6 @@ $('runtime-settings-form').onsubmit = async (e) => {
     e.submitter.disabled = false;
   }
 };
-$('open-archive').onclick = () => $('archive-dialog').showModal();
-$('close-archive').onclick = () => $('archive-dialog').close();
 $('back-today').onclick = () => selectDay(state.today);
 $('day').onchange = () => {
   if ($('day').value) selectDay($('day').value);
@@ -434,6 +430,7 @@ $('refresh-today').onclick = async () => {
     await refresh(true);
   }
 };
+navigation.start();
 refresh().catch((e) => notice(e.message));
 // Retry a failed initial connection until the database settings are available.
 configurePolling(5);
