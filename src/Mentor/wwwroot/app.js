@@ -150,11 +150,10 @@ async function renderCurrent(day) {
     success = attempts.find((a) => a.status === 'completed' && a.messageCount > 0);
   const active = attempts.find((a) => ['queued', 'running'].includes(a.status));
   $('analyze').disabled = !canAnalyze(day);
-  $('analyze').textContent = active
-    ? labels[active.status]
-    : success
-      ? 'Aktualizovat'
-      : 'Analyzovat';
+  const analyzeLabel = active ? labels[active.status] : success ? 'Aktualizovat' : 'Analyzovat';
+  $('analyze').setAttribute('aria-label', analyzeLabel);
+  $('analyze').title = analyzeLabel;
+  $('analyze').setAttribute('aria-busy', String(!!active));
   const report = $('current-report');
   report.replaceChildren();
   if (active) {
@@ -255,12 +254,13 @@ async function refresh(force = false) {
     const imports = $('import-status');
     imports.replaceChildren();
     const waitingDays = days.filter((d) => totals(d).messages > totals(d).analyzed);
-    $('open-archive').textContent = waitingDays.length
-      ? `Archiv (${waitingDays.length})`
-      : 'Archiv';
-    $('open-archive').title = waitingDays.length
-      ? `${waitingDays.length} dní čeká na rozbor`
-      : 'Starší dny a rozbory';
+    $('archive-pending-count').textContent = waitingDays.length;
+    $('archive-pending-count').hidden = !waitingDays.length;
+    const archiveLabel = waitingDays.length
+      ? `Archiv · ${waitingDays.length} dní čeká na rozbor`
+      : 'Archiv · Starší dny a rozbory';
+    $('open-archive').setAttribute('aria-label', archiveLabel);
+    $('open-archive').title = archiveLabel;
     const loading = state.conversations.filter((c) =>
       ['queued', 'importing'].includes(c.status)
     ).length;

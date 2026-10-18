@@ -124,6 +124,41 @@ button:disabled {
   opacity: 0.5;
   cursor: wait;
 }
+.icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+}
+.icon-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon-button:focus-visible {
+  outline: 2px solid #759a82;
+  outline-offset: 3px;
+}
+.icon-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #f8efd8;
+  color: #806422;
+  font-size: 11px;
+  line-height: 20px;
+}
 .secondary {
   background: #edf0e8;
   color: #324f40;
