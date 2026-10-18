@@ -337,7 +337,7 @@ async function showConversation(id, day) {
   const c = await api('conversations/' + id);
   openConversation = { conversation: c, day };
   renderConversationActions();
-  $('conversation-title').textContent = `#${c.id} · ${c.title}`;
+  $('conversation-title').textContent = c.title;
   const content = $('conversation-content');
   content.replaceChildren();
   content.append(el('p', `Vloženo ${date(c.createdAt)}`, 'hint'));
