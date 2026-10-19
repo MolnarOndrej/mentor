@@ -8,17 +8,14 @@ export function analysisControl(state, day) {
       label: active.status === 'queued' ? 'Ve frontě' : 'Probíhá rozbor',
     };
 
-  const coverage = (state?.conversations || []).flatMap((c) => c.days.filter((d) => d.day === day));
+  const coverage = (state?.conversations || [])
+    .filter((c) => c.status === 'ready')
+    .flatMap((c) => c.days.filter((d) => d.day === day));
   const messages = coverage.reduce((sum, d) => sum + d.messageCount, 0);
-  const changed = state?.changedDays?.includes(day) || false;
-  if (!messages && !changed)
-    return { enabled: false, status: 'empty', label: 'Nejsou zprávy k rozboru' };
-  if (!changed) return { enabled: false, status: 'completed', label: 'Rozbor je aktuální' };
+  if (!messages) return { enabled: false, status: 'empty', label: 'Nejsou zprávy k rozboru' };
   return {
     enabled: true,
     status: 'ready',
-    label: attempts.some((a) => a.status === 'completed' && a.messageCount > 0)
-      ? 'Aktualizovat'
-      : 'Analyzovat',
+    label: 'Analyzovat',
   };
 }

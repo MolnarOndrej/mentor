@@ -164,6 +164,20 @@
         <div id="archive"></div>
       </section>
     </main>
+    <dialog
+      id="regenerate-analysis-dialog"
+      aria-labelledby="regenerate-analysis-title"
+      aria-describedby="regenerate-analysis-description"
+    >
+      <h2 id="regenerate-analysis-title">Přegenerovat rozbor?</h2>
+      <p id="regenerate-analysis-description">
+        Po úspěšném dokončení nový rozbor nahradí stávající rozbor.
+      </p>
+      <form method="dialog" class="actions">
+        <button value="cancel" class="secondary" autofocus>Zrušit</button>
+        <button value="regenerate">Přegenerovat</button>
+      </form>
+    </dialog>
     <dialog id="delete-conversation-dialog" aria-labelledby="delete-conversation-description">
       <p id="delete-conversation-description"></p>
       <form method="dialog" class="actions">

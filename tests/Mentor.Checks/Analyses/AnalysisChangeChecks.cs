@@ -22,14 +22,14 @@ internal static class AnalysisChangeChecks
         repository.ImportDone(first, importer.Data);
         check(service.GetState().ChangedDays.Contains(day), "first imported conversation enables analysis");
         CompleteAnalysis(repository, day);
-        check(!service.GetState().ChangedDays.Contains(day), "completed analysis disables analysis until data changes");
+        check(!service.GetState().ChangedDays.Contains(day), "completed analysis clears the change hint");
         var result = await service.RefreshTodayAsync(default);
         check(result is { CheckedCount: 1, UpdatedCount: 0 } && !service.GetState().ChangedDays.Contains(day),
-            "bulk refresh of unchanged accessible source keeps analysis disabled");
+            "bulk refresh of unchanged accessible source keeps the change hint cleared");
         importer.UnavailableUrls.Add(url);
         result = await service.RefreshTodayAsync(default);
         check(result is { UpdatedCount: 0 } && !service.GetState().ChangedDays.Contains(day),
-            "bulk refresh of unavailable source keeps analysis disabled");
+            "bulk refresh of unavailable source keeps the change hint cleared");
         importer.UnavailableUrls.Clear();
         importer.Data = new(importer.Data.Title, [new("user", "Edited text with same message number", 1), new("assistant", "Response", 2)]);
         result = await service.RefreshTodayAsync(default);
@@ -71,8 +71,12 @@ internal static class AnalysisChangeChecks
         service.DeleteConversation(second);
         check(service.GetState().ChangedDays.Contains(day) && service.GetState().Conversations.Count == 0,
             "deleting final conversation enables an empty updated analysis");
-        CompleteAnalysis(repository, day);
-        check(!service.GetState().ChangedDays.Contains(day), "completed empty analysis consumes final deletion");
+        try
+        {
+            CompleteAnalysis(repository, day);
+            throw new Exception("Empty analysis accepted");
+        }
+        catch (ArgumentException) { check(true, "deleting final conversation prevents analysis"); }
     }
 
     private static void CompleteAnalysis(Mentor.Infrastructure.Persistence.EfMentorRepository repository, string day)

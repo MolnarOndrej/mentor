@@ -46,9 +46,9 @@ public sealed class WorkProcessor(
                 await refresher.RefreshDayAsync(input.Day, cancellationToken);
                 input = queue.RefreshAnalysisInput(batch.Value.Id);
             }
-            var result = input.Conversations.Count == 0
-                ? "Pro tento den nejsou uložené žádné zprávy. Neúspěšné importy nejsou součástí rozboru."
-                : await analyzer.AnalyzeAsync(input, cancellationToken);
+            if (input.Conversations.Count == 0)
+                throw new InvalidOperationException("Pro tento den nejsou analyzovatelné zprávy.");
+            var result = await analyzer.AnalyzeAsync(input, cancellationToken);
             queue.AnalysisDone(batch.Value.Id, result);
         }, error => queue.AnalysisFailed(batch.Value.Id, error), cancellationToken);
         return true;

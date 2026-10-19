@@ -40,6 +40,7 @@ let state,
   lastRender = '',
   refreshing = false;
 let updatingConversations = false;
+let requestingAnalysis = false;
 let openConversation = null;
 const promptEditor = new PromptEditor();
 const runtimeSettingsEditor = new RuntimeSettingsEditor((saved) => {
@@ -76,7 +77,17 @@ function totals(day) {
   };
 }
 function canAnalyze(day) {
-  return !updatingConversations && analysisControl(state, day).enabled;
+  return analysisControl(state, day).enabled;
+}
+function confirmRegeneration() {
+  const dialog = $('regenerate-analysis-dialog');
+  dialog.returnValue = '';
+  return new Promise((resolve) => {
+    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'regenerate'), {
+      once: true,
+    });
+    dialog.showModal();
+  });
 }
 function confirmDelete(c) {
   const dialog = $('delete-conversation-dialog');
@@ -105,7 +116,6 @@ function conversationActions(c) {
       'M20 4v6h-6 M20 10a8 8 0 1 0-2 8',
       async () => {
         updatingConversations = true;
-        $('analyze').disabled = true;
         $('refresh-today').disabled = true;
         try {
           const result = await api(`conversations/${c.id}/refresh`, 'POST');
@@ -214,7 +224,7 @@ async function renderCurrent(day) {
     success = attempts.find((a) => a.status === 'completed');
   const active = attempts.find((a) => ['queued', 'running'].includes(a.status));
   const control = analysisControl(state, day);
-  $('analyze').disabled = !canAnalyze(day);
+  $('analyze').disabled = requestingAnalysis || !canAnalyze(day);
   $('refresh-today').hidden = day !== state.today;
   $('refresh-today').disabled = updatingConversations || !!active || !dayRows(day).length;
   $('refresh-today').setAttribute('aria-busy', String(updatingConversations));
@@ -236,7 +246,8 @@ async function renderCurrent(day) {
   }
   if (latest?.status === 'failed') {
     const error = el('details');
-    error.append(el('summary', 'Rozbor selhal · podrobnosti'), el('p', latest.error, 'error'));
+    error.open = true;
+    error.append(el('summary', 'Poslední pokus o rozbor selhal'), el('p', latest.error, 'error'));
     report.append(error);
   }
   if (success) {
@@ -264,6 +275,10 @@ async function refresh(force = false) {
       initialized = true;
     }
     state = next;
+    const completedIds = new Set(
+      state.analyses.filter((a) => a.status === 'completed').map((a) => a.id)
+    );
+    for (const id of reportCache.keys()) if (!completedIds.has(id)) reportCache.delete(id);
     renderConversationActions();
     configurePolling(state.settings.runtime.pollIntervalSeconds);
     const day = selectedDay || state.today;
@@ -341,23 +356,30 @@ $('import-form').onsubmit = async (e) => {
   }
 };
 $('analyze').onclick = async () => {
+  if (requestingAnalysis) return;
+  requestingAnalysis = true;
   const b = $('analyze');
+  const day = $('day').value;
   b.disabled = true;
   try {
-    selectedDay = $('day').value;
-    await promptEditor.analyze(selectedDay);
+    selectedDay = day;
+    if (!canAnalyze(day)) return;
+    if (state.analyses.some((a) => a.day === day && a.status === 'completed')) {
+      if (!(await confirmRegeneration())) return;
+    }
+    await promptEditor.analyze(day);
     notice('');
     await refresh(true);
   } catch (e) {
     notice(e.message);
   } finally {
+    requestingAnalysis = false;
     b.disabled = !canAnalyze(selectedDay || state?.today);
   }
 };
 $('refresh-today').onclick = async () => {
   updatingConversations = true;
   $('refresh-today').disabled = true;
-  $('analyze').disabled = true;
   try {
     const result = await api('conversations/refresh-today', 'POST');
     const summary = `Zkontrolováno konverzací: ${result.checkedCount}. Aktualizováno: ${result.updatedCount}.`;

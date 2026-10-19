@@ -33,11 +33,12 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
             conversation.Status = "queued";
             conversation.Error = null;
         }
-        foreach (var analysis in db.Analyses.Where(x => x.Status == "running"))
+        foreach (var analysis in db.Analyses.Where(x => x.Status == "running").ToList())
         {
             analysis.Status = "failed";
             analysis.Error = "Aplikace byla během rozboru ukončena. Spusťte nový rozbor.";
             analysis.CompletedAt = Now();
+            db.Analyses.RemoveRange(db.Analyses.Where(x => x.Day == analysis.Day && x.Status == "failed"));
         }
         if (!db.Settings.Any(x => x.Id == 1))
             db.Settings.Add(new SettingsEntity { Id = 1, Prompt = initialPrompt });
@@ -71,14 +72,6 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
     private void UpdateConversation(long id, Action<ConversationEntity> change) => Write(db =>
     {
         var entity = db.Conversations.SingleOrDefault(x => x.Id == id);
-        if (entity != null)
-            change(entity);
-        return 0;
-    });
-
-    private void UpdateAnalysis(long id, Action<AnalysisEntity> change) => Write(db =>
-    {
-        var entity = db.Analyses.SingleOrDefault(x => x.Id == id);
         if (entity != null)
             change(entity);
         return 0;
@@ -207,28 +200,34 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
                 return 0;
             if (promptOverride != null)
                 settings.Prompt = promptOverride;
-            if (trigger == "daily")
-                settings.LastDailyDate = day;
             var existing = db.Analyses.OrderBy(x => x.Id).FirstOrDefault(x => x.Day == day &&
                 (x.Status == "queued" || x.Status == "running"));
             if (existing != null)
             {
-                if (expectedData != null)
+                if (trigger == "daily")
                 {
-                    var requested = new AnalysisInput(day, promptOverride ?? existing.Prompt,
-                        SelectDay(ReadConversations(db), day));
-                    if (existing.FullPrompt != AnalysisPrompt.Build(requested))
-                        throw new AnalysisConflictException("Rozbor tohoto dne již čeká nebo běží s jiným zadáním. Vyčkejte na jeho dokončení.");
+                    settings.LastDailyDate = day;
+                    return 0;
                 }
-                return existing.Id;
+                throw new AnalysisConflictException("Rozbor tohoto dne již čeká nebo běží. Vyčkejte na jeho dokončení.");
             }
+            var batch = SelectDay(ReadConversations(db), day);
+            if (batch.Count == 0)
+            {
+                if (trigger == "daily")
+                {
+                    if (!db.Conversations.Any(x => x.Status == "queued" || x.Status == "importing"))
+                        settings.LastDailyDate = day;
+                    return 0;
+                }
+                throw new ArgumentException("Pro tento den nejsou analyzovatelné zprávy.");
+            }
+            if (trigger == "daily")
+                settings.LastDailyDate = day;
             var entity = new AnalysisEntity { Trigger = trigger, CreatedAt = Now(), Day = day, Prompt = settings.Prompt };
             if (expectedData != null)
             {
-                var conversations = ReadConversations(db);
-                var input = new AnalysisInput(day, settings.Prompt, SelectDay(conversations, day));
-                if (conversations.Any(x => x.Status is "queued" or "importing") || AnalysisPrompt.Data(input) != expectedData)
-                    throw new AnalysisConflictException("Konverzace se změnily nebo ještě probíhá import. Otevřete zadání znovu a zkontrolujte aktuální prompt.");
+                var input = new AnalysisInput(day, settings.Prompt, batch);
                 Snapshot(entity, input);
             }
             db.Analyses.Add(entity);
@@ -272,18 +271,27 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         };
     });
 
-    public void AnalysisDone(long id, string result) => UpdateAnalysis(id, entity =>
+    public void AnalysisDone(long id, string result) => Write(db =>
     {
+        if (string.IsNullOrWhiteSpace(result))
+            throw new InvalidOperationException("Generování nevrátilo platný rozbor.");
+        var entity = db.Analyses.Single(x => x.Id == id && x.Status == "running");
         entity.Status = "completed";
         entity.Result = result;
+        entity.Error = null;
         entity.CompletedAt = Now();
+        db.Analyses.RemoveRange(db.Analyses.Where(x => x.Day == entity.Day && x.Id != id));
+        return 0;
     });
 
-    public void AnalysisFailed(long id, string error) => UpdateAnalysis(id, entity =>
+    public void AnalysisFailed(long id, string error) => Write(db =>
     {
+        var entity = db.Analyses.Single(x => x.Id == id && (x.Status == "queued" || x.Status == "running"));
         entity.Status = "failed";
         entity.Error = error;
         entity.CompletedAt = Now();
+        db.Analyses.RemoveRange(db.Analyses.Where(x => x.Day == entity.Day && x.Id != id && x.Status == "failed"));
+        return 0;
     });
 
     public void Probe() => Read(db =>

@@ -55,7 +55,8 @@ DI registruje `IDbContextFactory<MentorDbContext>`. Repository je singleton kvů
 
 - Jeden den spojuje N celých konverzací podle dne vložení odkazu v systémovém časovém pásmu. Časy jednotlivých zpráv se neukládají ani nepoužívají.
 - Úprava promptu neovlivní rozpracované ani historické běhy.
-- Zkontrolovaný prompt se neposune potichu o nové zprávy. Nové importy zůstanou čekající.
+- Opakované spuštění nevyžaduje změny konverzací. Backend ověřuje dostupnost zpráv a odmítá souběžný rozbor stejného dne.
+- Původní rozbor zůstává dostupný až do transakčního uložení ověřeného výsledku a odstranění předchozího rozboru. Historie nahrazených rozborů se neuchovává; chyba posledního pokusu je samostatná.
 - Selhání nerozšíří úspěšné pokrytí a nesmaže předchozí výsledek.
 - CLI má read-only sandbox, vypnuté akční nástroje a omezenou dobu běhu.
 - Pilot nemá migrace ani legacy větve. Běžný restart zachovává data.

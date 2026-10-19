@@ -81,6 +81,7 @@ await CodexImportChecks.RunAsync(Check);
 await RefreshChecks.RunAsync(Check);
 await SourceAvailabilityChecks.RunAsync(Check);
 await AnalysisChangeChecks.RunAsync(Check);
+AnalysisReplacementChecks.Run(Check);
 InsertionDayChecks.Run(Check);
 await RuntimeSettingsChecks.RunAsync(Check);
 if (args.FirstOrDefault() is "--codex-share" or "--codex-url")
@@ -118,7 +119,12 @@ store.SavePrompt("Prompt A\n{{data}}");
 const string day = "2026-10-07";
 var second = store.Add(url[..^1] + "2").Conversation;
 var id = store.EnqueueAnalysis("manual", day);
-Check(store.EnqueueAnalysis("manual", day) == id, "no overlapping analyses for same day");
+try
+{
+    store.EnqueueAnalysis("manual", day);
+    throw new Exception("Overlapping analysis accepted");
+}
+catch (AnalysisConflictException) { Check(true, "no overlapping analyses for same day"); }
 Check(store.ClaimAnalysis() == null, "analysis waits for imports");
 store.ClaimImport();
 store.ImportDone(second.Id, new("Whole conversation", new(){
@@ -165,10 +171,9 @@ Check(DailySchedule.DueDate(LocalTime.At("2026-12-01T22:00:00"), null, "22:00") 
 Check(DailySchedule.DueDate(LocalTime.At("2026-12-01T23:00:00"), "2026-12-01", "22:00") == null, "daily exactly once");
 Check(DailySchedule.Day(LocalTime.At("2026-10-08T00:01:00")) == "2026-10-08", "system local midnight starts a new day");
 Check(DailySchedule.Day(LocalTime.At("2026-12-02T00:01:00")) == "2026-12-02", "winter midnight boundary");
-store.EnqueueAnalysis("daily", "2026-12-01");
+Check(store.EnqueueAnalysis("daily", "2026-12-01") == 0, "empty daily analysis is skipped");
 Check(store.EnqueueAnalysis("daily", "2026-12-01") == 0, "daily claim persisted");
-var dailyBatch = store.ClaimAnalysis()!.Value;
-store.AnalysisDone(dailyBatch.Id, "No messages");
+Check(store.ClaimAnalysis() == null, "empty daily analysis creates no report");
 var config = new MentorInfrastructureOptions { CodexExecutable = Environment.ProcessPath!, DataDirectory = path };
 using var telemetry = new MentorTelemetry();
 var analyzer = new CodexCliAnalyzer(Options.Create(config), telemetry);
@@ -195,13 +200,9 @@ var exactBatch = store.ClaimAnalysis()!.Value;
 Check(exactBatch.Id == exactId && AnalysisPrompt.Build(exactBatch.Input) == shownText && store.FullPrompt(exactId) == shownText, "reviewed UI prompt stays byte-for-byte identical through queued execution");
 Check(!exactBatch.Input.Conversations.Any(c => c.Id == fourth.Id), "new imports remain pending rather than silently changing reviewed input");
 store.AnalysisDone(exactId, "Exact snapshot");
-try
-{
-    store.EnqueueAnalysis("manual", day, editedTemplate, AnalysisPrompt.Data(shown));
-    throw new Exception("Stale UI data accepted");
-}
-catch (AnalysisConflictException) { Check(true, "stale reviewed data rejected before queueing"); }
-Check(!store.Analyses().Any(a => a.Status == "queued"), "stale input rollback does not leave queued analysis");
+var repeatedId = store.EnqueueAnalysis("manual", day, editedTemplate, AnalysisPrompt.Data(shown));
+Check(store.ClaimAnalysis()!.Value.Input.Conversations.Count == 4, "conversation changes do not block analysis; current data is used");
+store.AnalysisDone(repeatedId, "Repeated snapshot");
 input = new AnalysisInput(day, editedTemplate, shown.Conversations);
 var capturePath = Path.Combine(path, "stdin.txt");
 Environment.SetEnvironmentVariable("MENTOR_CAPTURE_FILE", capturePath);

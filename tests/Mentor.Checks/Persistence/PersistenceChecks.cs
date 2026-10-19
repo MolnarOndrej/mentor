@@ -41,24 +41,22 @@ internal static class PersistenceChecks
             "EF read models cannot mutate persisted messages outside a write operation");
 
         const string day = "2026-10-18";
-        var promptBefore = repository.Settings().Prompt;
-        try
-        {
-            repository.EnqueueAnalysis("manual", day, "Changed instructions\n{{data}}", "stale data");
-            throw new Exception("Stale data accepted");
-        }
-        catch (AnalysisConflictException) { }
-        check(repository.Settings().Prompt == promptBefore && repository.Analyses().Count == 0,
-            "EF rejected enqueue rolls back settings and the analysis together");
-
         var enqueues = await Task.WhenAll(Enumerable.Range(0, 12)
-            .Select(_ => Task.Run(() => repository.EnqueueAnalysis("manual", day))));
-        check(enqueues.Distinct().Count() == 1 && repository.Analyses().Count == 1,
-            "EF concurrent analysis requests share one active daily batch");
+            .Select(_ => Task.Run(() =>
+            {
+                try
+                {
+                    return repository.EnqueueAnalysis("manual", day);
+                }
+                catch (AnalysisConflictException) { return 0L; }
+            })));
+        var activeId = enqueues.Single(x => x != 0);
+        check(repository.Analyses().Count == 1,
+            "EF concurrent analysis requests reject overlap and create one active daily batch");
         var analyses = await Task.WhenAll(Enumerable.Range(0, 12)
             .Select(_ => Task.Run(repository.ClaimAnalysis)));
         check(analyses.Count(x => x.HasValue) == 1 && repository.Analyses().Single().Status == "running" &&
-            repository.FullPrompt(enqueues[0])!.Contains("Český text", StringComparison.Ordinal),
+            repository.FullPrompt(activeId)!.Contains("Český text", StringComparison.Ordinal),
             "EF concurrent analysis claims persist one running batch and its prompt snapshot");
     }
 }
