@@ -5,6 +5,7 @@ import { analysisControl } from './analysis-control.js';
 import { Navigation } from './navigation.js';
 import { RuntimeSettingsEditor } from './runtime-settings-editor.js';
 import { ArchiveCalendar } from './archive-calendar.js';
+import { DiscussionView } from './discussion.js';
 const labels = {
   queued: 'Ve frontě',
   importing: 'Načítání',
@@ -52,6 +53,12 @@ const archiveCalendar = new ArchiveCalendar($('archive'), (list, day) => {
   for (const c of dayRows(day)) list.append(conversationCard(c, day, false, true));
 });
 const reportCache = new Map();
+const discussionView = new DiscussionView(
+  () => refresh(true),
+  () => {
+    $('analyze').disabled = true;
+  }
+);
 let pollTimer, pollInterval;
 function configurePolling(seconds) {
   if (seconds === pollInterval) return;
@@ -224,7 +231,7 @@ async function renderCurrent(day) {
     success = attempts.find((a) => a.status === 'completed');
   const active = attempts.find((a) => ['queued', 'running'].includes(a.status));
   const control = analysisControl(state, day);
-  $('analyze').disabled = requestingAnalysis || !canAnalyze(day);
+  $('analyze').disabled = requestingAnalysis || discussionView.submitting || !canAnalyze(day);
   $('refresh-today').hidden = day !== state.today;
   $('refresh-today').disabled = updatingConversations || !!active || !dayRows(day).length;
   $('refresh-today').setAttribute('aria-busy', String(updatingConversations));
@@ -254,6 +261,7 @@ async function renderCurrent(day) {
     const content = el('div');
     report.append(content);
     await fillAttempt(content, success);
+    report.append(await discussionView.render(success, !!active || requestingAnalysis));
     if (state.changedDays.includes(day))
       report.append(el('p', 'Konverzace se změnily. Rozbor můžete aktualizovat.', 'hint'));
   } else if (!active && !totalsForDay.messages)
@@ -288,6 +296,7 @@ async function refresh(force = false) {
       state.conversations,
       state.analyses,
       state.changedDays,
+      state.discussions,
       updatingConversations,
     ]);
     if (signature === lastRender && !force) return;
@@ -358,6 +367,9 @@ $('import-form').onsubmit = async (e) => {
 $('analyze').onclick = async () => {
   if (requestingAnalysis) return;
   requestingAnalysis = true;
+  document.querySelectorAll('[data-discussion-control]').forEach((control) => {
+    control.disabled = true;
+  });
   const b = $('analyze');
   const day = $('day').value;
   b.disabled = true;
@@ -375,6 +387,7 @@ $('analyze').onclick = async () => {
   } finally {
     requestingAnalysis = false;
     b.disabled = !canAnalyze(selectedDay || state?.today);
+    await refresh(true);
   }
 };
 $('refresh-today').onclick = async () => {

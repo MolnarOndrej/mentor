@@ -3,6 +3,7 @@ using Mentor.Application.Analyses;
 using Mentor.Application.Configuration;
 using Mentor.Application.Conversations;
 using Mentor.Application.Diagnostics;
+using Mentor.Application.Discussions;
 using Microsoft.Extensions.Logging;
 
 namespace Mentor.Application.Processing;
@@ -16,7 +17,8 @@ public sealed class WorkProcessor(
     TimeProvider clock,
     MentorTelemetry telemetry,
     ILogger<WorkProcessor> logger,
-    ConversationRefresher refresher)
+    ConversationRefresher refresher,
+    IDiscussionResponder? responder = null)
 {
     public async Task<bool> ProcessNextAsync(CancellationToken cancellationToken)
     {
@@ -31,6 +33,19 @@ public sealed class WorkProcessor(
             await ExecuteJobAsync("import", conversation.Id,
                 async () => queue.ImportDone(conversation.Id, await importer.ImportAsync(conversation.Url, cancellationToken)),
                 error => queue.ImportFailed(conversation.Id, error), cancellationToken);
+            return true;
+        }
+
+        var answer = queue.ClaimAnswer();
+        if (answer != null)
+        {
+            await ExecuteJobAsync("answer", answer.Value.Id, async () =>
+            {
+                var result = await (responder ?? throw new InvalidOperationException("Generování odpovědí není dostupné."))
+                    .RespondAsync(answer.Value.Prompt, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                queue.AnswerDone(answer.Value.Id, result);
+            }, error => queue.AnswerFailed(answer.Value.Id, error), cancellationToken);
             return true;
         }
 
@@ -74,6 +89,8 @@ public sealed class WorkProcessor(
             outcome = "cancelled";
             if (kind == "analysis")
                 fail("Rozbor byl přerušen ukončením aplikace. Spusťte nový rozbor.");
+            if (kind == "answer")
+                fail("Odpověď byla přerušena ukončením aplikace. Zkuste ji znovu.");
             // An interrupted import is recovered from its durable claim on restart.
             throw;
         }

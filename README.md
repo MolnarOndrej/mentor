@@ -44,6 +44,10 @@ Tlačítko „Nastavení“ nahoře umožňuje měnit interval pollování (1–
 
 ## Data a konfigurace
 
+Pod dokončeným rozborem je volitelná diskuse. Odeslání otázky uloží její pořadí a stav a zařadí generování odpovědi do fronty. Pouhé otevření rozboru nebo diskuse Codex nevolá. Každá odpověď má vlastní dočasné volání CLI s přesným původním zadáním a snímkem podkladů, výsledkem rozboru, dosavadními otázkami a odpověďmi a novou otázkou. Kontext má limit 240 000 znaků včetně obálky; při překročení se otázka odmítne s chybou bez zkrácení obsahu.
+
+Pro den může čekat nebo běžet jen jeden rozbor či jedna odpověď; souběžné požadavky backend atomicky odmítá (HTTP 409). UI během odpovědi zakáže další otázku i rozbor, během přegenerování zakáže otázky a ponechá původní obsah čitelný. Chyba i přerušení odpovědi zachovají předchozí diskusi a nabídnou opakování téže otázky. Diskuse přežije běžný restart. Úspěšné nahrazení rozboru odstraní jeho diskusi ve stejné transakci; nový rozbor začne prázdný. Tato verze mění schéma SQLite: stávající pilotní databázi je potřeba před prvním spuštěním znovu vytvořit podle pravidla pilotu níže, migrace se neprovádí.
+
 Databáze: `src/Mentor/Data/mentor.db` (včetně WAL/SHM za běhu), vynechaná z Gitu. Obsah není šifrovaný aplikací; chraňte Windows účet a disk. Pro zálohu aplikaci zastavte a zkopírujte celý adresář `Data`. Smazání zdrojového vlákna nesmaže kopii v Mentoru.
 
 Volitelné proměnné prostředí:

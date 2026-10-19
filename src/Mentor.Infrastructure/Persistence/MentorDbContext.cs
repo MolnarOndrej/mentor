@@ -3,6 +3,7 @@ using System.Text.Json;
 using Mentor.Infrastructure.Persistence.Analyses;
 using Mentor.Infrastructure.Persistence.Configuration;
 using Mentor.Infrastructure.Persistence.Conversations;
+using Mentor.Infrastructure.Persistence.Discussions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -14,6 +15,7 @@ public sealed class MentorDbContext(DbContextOptions<MentorDbContext> options) :
     internal DbSet<ConversationEntity> Conversations => Set<ConversationEntity>();
     internal DbSet<AnalysisEntity> Analyses => Set<AnalysisEntity>();
     internal DbSet<SettingsEntity> Settings => Set<SettingsEntity>();
+    internal DbSet<DiscussionTurnEntity> DiscussionTurns => Set<DiscussionTurnEntity>();
 
     public static string ConnectionString(string path) => new DbConnectionStringBuilder
     {
@@ -51,6 +53,12 @@ public sealed class MentorDbContext(DbContextOptions<MentorDbContext> options) :
         analyses.Property(x => x.Error).HasColumnName("error");
         JsonList(analyses.Property(x => x.ConversationIds).HasColumnName("conversation_ids"));
         JsonList(analyses.Property(x => x.MessageKeys).HasColumnName("message_keys"));
+
+        var turns = modelBuilder.Entity<DiscussionTurnEntity>();
+        turns.ToTable("discussion_turns");
+        turns.HasKey(x => x.Id);
+        turns.HasIndex(x => new { x.AnalysisId, x.Position }).IsUnique();
+        turns.HasOne<AnalysisEntity>().WithMany().HasForeignKey(x => x.AnalysisId).OnDelete(DeleteBehavior.Cascade);
 
         var settings = modelBuilder.Entity<SettingsEntity>();
         settings.ToTable("settings");

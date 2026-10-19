@@ -3,6 +3,7 @@ using Mentor.Application.Analyses;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Prompts;
 using Mentor.Checks.Application;
+using Mentor.Checks.Discussions;
 using Mentor.Checks.Analyses;
 using Mentor.Checks.Conversations;
 using Mentor.Checks.Persistence;
@@ -248,6 +249,7 @@ catch (System.ComponentModel.Win32Exception) { Check(true, "missing CLI preserve
 await ApplicationChecks.RunAsync(Check);
 await PersistenceChecks.RunAsync(Check);
 await AnalysisInterruptionChecks.RunAsync(Check);
+await DiscussionChecks.RunAsync(Check);
 await CodexLifetimeChecks.RunAsync(Check);
 await CliProcessChecks.RunAsync(Check);
 Console.WriteLine($"{passed} checks passed.");

@@ -29,7 +29,7 @@ internal static class CodexResponseParser
         if (actionAttempted)
             throw new InvalidOperationException("Codex se pokusil použít akční nástroj; výsledek nebyl přijat.");
         if (!completed || string.IsNullOrWhiteSpace(result))
-            throw new InvalidOperationException("Codex CLI nevrátil dokončený rozbor. " + Tail(stderr));
+            throw new InvalidOperationException("Codex CLI nevrátil dokončenou odpověď. " + Tail(stderr));
         return result;
     }
     private static string Tail(string value) => value.Length <= 3000 ? value : value[^3000..];

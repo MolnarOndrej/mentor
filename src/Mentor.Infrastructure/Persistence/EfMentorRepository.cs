@@ -2,11 +2,13 @@ using Mentor.Application.Analyses;
 using Mentor.Application.Configuration;
 using Mentor.Application.Conversations;
 using Mentor.Application.Diagnostics;
+using Mentor.Application.Discussions;
 using Mentor.Application.Processing;
 using Mentor.Application.Prompts;
 using Mentor.Infrastructure.Persistence.Analyses;
 using Mentor.Infrastructure.Persistence.Configuration;
 using Mentor.Infrastructure.Persistence.Conversations;
+using Mentor.Infrastructure.Persistence.Discussions;
 using Microsoft.EntityFrameworkCore;
 using static Mentor.Application.Analyses.DailyAnalysisPolicy;
 
@@ -39,6 +41,12 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
             analysis.Error = "Rozbor byl přerušen ukončením aplikace. Spusťte nový rozbor.";
             analysis.CompletedAt = Now();
             db.Analyses.RemoveRange(db.Analyses.Where(x => x.Day == analysis.Day && x.Status == "failed"));
+        }
+        foreach (var turn in db.DiscussionTurns.Where(x => x.Status == "running"))
+        {
+            turn.Status = "failed";
+            turn.Error = "Odpověď byla přerušena ukončením aplikace. Zkuste ji znovu.";
+            turn.CompletedAt = Now();
         }
         if (!db.Settings.Any(x => x.Id == 1))
             db.Settings.Add(new SettingsEntity { Id = 1, Prompt = initialPrompt });
@@ -202,14 +210,15 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
                 settings.Prompt = promptOverride;
             var existing = db.Analyses.OrderBy(x => x.Id).FirstOrDefault(x => x.Day == day &&
                 (x.Status == "queued" || x.Status == "running"));
-            if (existing != null)
+            if (existing != null || AnswerBusy(db, day))
             {
                 if (trigger == "daily")
                 {
-                    settings.LastDailyDate = day;
+                    if (existing != null)
+                        settings.LastDailyDate = day;
                     return 0;
                 }
-                throw new AnalysisConflictException("Rozbor tohoto dne již čeká nebo běží. Vyčkejte na jeho dokončení.");
+                throw new AnalysisConflictException("Pro tento den již čeká nebo běží generování rozboru či odpovědi. Vyčkejte na dokončení.");
             }
             var batch = SelectDay(ReadConversations(db), day);
             if (batch.Count == 0)
@@ -291,6 +300,100 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         entity.Error = error;
         entity.CompletedAt = Now();
         db.Analyses.RemoveRange(db.Analyses.Where(x => x.Day == entity.Day && x.Id != id && x.Status == "failed"));
+        return 0;
+    });
+
+    private static bool AnswerBusy(MentorDbContext db, string day) =>
+        db.DiscussionTurns.Any(t => (t.Status == "queued" || t.Status == "running") &&
+            db.Analyses.Any(a => a.Id == t.AnalysisId && a.Day == day));
+
+    private static void EnsureDayFree(MentorDbContext db, string day)
+    {
+        if (AnswerBusy(db, day) || db.Analyses.Any(a => a.Day == day && (a.Status == "queued" || a.Status == "running")))
+            throw new AnalysisConflictException("Pro tento den již čeká nebo běží generování rozboru či odpovědi. Vyčkejte na dokončení.");
+    }
+
+    public List<DiscussionTurn> Discussion(long analysisId) => Read(db => db.DiscussionTurns.AsNoTracking()
+        .Where(t => t.AnalysisId == analysisId).OrderBy(t => t.Position).AsEnumerable().Select(t => t.ToModel()).ToList());
+
+    public List<DiscussionSummary> DiscussionSummaries() => Read(db => (
+        from t in db.DiscussionTurns.AsNoTracking()
+        join a in db.Analyses on t.AnalysisId equals a.Id
+        orderby t.Id
+        select new DiscussionSummary(t.Id, t.AnalysisId, a.Day, t.Status)).ToList());
+
+    private static string AnswerPrompt(MentorDbContext db, DiscussionTurnEntity turn)
+    {
+        var analysis = db.Analyses.Single(a => a.Id == turn.AnalysisId && a.Status == "completed");
+        var history = db.DiscussionTurns.AsNoTracking().Where(t => t.AnalysisId == turn.AnalysisId &&
+            t.Position < turn.Position && t.Status == "completed").OrderBy(t => t.Position)
+            .AsEnumerable().Select(t => t.ToModel());
+        return DiscussionPrompt.Build(analysis.FullPrompt!, analysis.Result!, history, turn.Question);
+    }
+
+    public long EnqueueAnswer(long analysisId, string question) => Write(db =>
+    {
+        if (string.IsNullOrWhiteSpace(question) || question.Length > DiscussionPrompt.MaximumInputCharacters)
+            throw new ArgumentException("Otázka musí mít 1 až 240 000 znaků.");
+        var analysis = db.Analyses.SingleOrDefault(a => a.Id == analysisId && a.Status == "completed")
+            ?? throw new ArgumentException("Diskuse vyžaduje aktuální dokončený rozbor.");
+        EnsureDayFree(db, analysis.Day);
+        if (db.DiscussionTurns.Any(t => t.AnalysisId == analysisId && t.Status == "failed"))
+            throw new AnalysisConflictException("Nejprve zopakujte neúspěšnou odpověď.");
+        var turn = new DiscussionTurnEntity
+        {
+            AnalysisId = analysisId,
+            Position = (db.DiscussionTurns.Where(t => t.AnalysisId == analysisId).Max(t => (int?)t.Position) ?? 0) + 1,
+            Question = question,
+            CreatedAt = Now()
+        };
+        _ = AnswerPrompt(db, turn);
+        db.DiscussionTurns.Add(turn);
+        db.SaveChanges();
+        return turn.Id;
+    });
+
+    public void RetryAnswer(long id) => Write(db =>
+    {
+        var turn = db.DiscussionTurns.SingleOrDefault(t => t.Id == id && t.Status == "failed")
+            ?? throw new ArgumentException("Opakovat lze pouze neúspěšnou odpověď.");
+        var day = db.Analyses.Single(a => a.Id == turn.AnalysisId).Day;
+        EnsureDayFree(db, day);
+        _ = AnswerPrompt(db, turn);
+        turn.Status = "queued";
+        turn.Error = null;
+        turn.CompletedAt = null;
+        return 0;
+    });
+
+    public (long Id, string Prompt)? ClaimAnswer() => Write<(long, string)?>(db =>
+    {
+        var turn = db.DiscussionTurns.Where(t => t.Status == "queued").OrderBy(t => t.Id).FirstOrDefault();
+        if (turn == null)
+            return null;
+        var prompt = AnswerPrompt(db, turn);
+        turn.Status = "running";
+        return (turn.Id, prompt);
+    });
+
+    public void AnswerDone(long id, string answer) => Write(db =>
+    {
+        if (string.IsNullOrWhiteSpace(answer))
+            throw new InvalidOperationException("Generování nevrátilo platnou odpověď.");
+        var turn = db.DiscussionTurns.Single(t => t.Id == id && t.Status == "running");
+        turn.Answer = answer;
+        turn.Status = "completed";
+        turn.Error = null;
+        turn.CompletedAt = Now();
+        return 0;
+    });
+
+    public void AnswerFailed(long id, string error) => Write(db =>
+    {
+        var turn = db.DiscussionTurns.Single(t => t.Id == id && (t.Status == "running" || t.Status == "queued"));
+        turn.Status = "failed";
+        turn.Error = error;
+        turn.CompletedAt = Now();
         return 0;
     });
 

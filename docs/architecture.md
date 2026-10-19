@@ -56,6 +56,8 @@ DI registruje `IDbContextFactory<MentorDbContext>`. Repository je singleton kvů
 
 ## Zachované invarianty
 
+Diskuse je volitelná a patří právě jednomu aktuálnímu dokončenému rozboru. `discussion_turns` ukládá otázku, odpověď, pořadí, stav, chybu a časy; unikátní index chrání pořadí v rozboru a cizí klíč s kaskádou zajišťuje transakční odstranění při nahrazení. Společný zámek a transakce rezervují celý den už při zařazení rozboru nebo odpovědi. Odpověď dostává uložený `FullPrompt`, nikoli nově sestavené podklady. `DiscussionPrompt` přidá výsledek, dokončenou historii a novou otázku a kontroluje celkový limit 240 000 znaků před zápisem úlohy. `IDiscussionResponder` používá stejný CLI runner, izolaci, timeout i úklid procesů jako rozbory. Worker zapisuje přerušení odpovědi při shutdownu; inicializace repository totéž provede pro zbylé běžící odpovědi po násilném ukončení. Čekající odpovědi se zachovají. Čtecí endpoint diskuse ani vykreslení UI nevytvářejí úlohu.
+
 - Jeden den spojuje N celých konverzací podle dne vložení odkazu v systémovém časovém pásmu. Časy jednotlivých zpráv se neukládají ani nepoužívají.
 - Úprava promptu neovlivní rozpracované ani historické běhy.
 - Opakované spuštění nevyžaduje změny konverzací. Backend ověřuje dostupnost zpráv a odmítá souběžný rozbor stejného dne.

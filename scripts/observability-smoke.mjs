@@ -101,6 +101,23 @@ try {
   });
   assert.equal(report.conversationIds.length, 2);
   assert.equal((await request(`/api/analyses/${report.id}/prompt`)).prompt, rendered.prompt);
+  assert.deepEqual(await request(`/api/analyses/${report.id}/discussion`), []);
+  const question = await request(`/api/analyses/${report.id}/discussion`, { question: 'PRIVATE_DISCUSSION_MARKER' });
+  const discussion = await until(async () => {
+    const turns = await request(`/api/analyses/${report.id}/discussion`);
+    assert.notEqual(turns[0]?.status, 'failed', turns[0]?.error);
+    return turns[0]?.status === 'completed' ? turns : null;
+  });
+  assert.equal(discussion[0].id, question.id);
+  assert.equal(discussion[0].question, 'PRIVATE_DISCUSSION_MARKER');
+  assert.equal(discussion[0].answer, 'Testovací rozbor');
+  assert.equal((await request('/api/state')).discussions[0].status, 'completed');
+  const oversizedQuestion = await fetch(base + `/api/analyses/${report.id}/discussion`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Mentor-Request': '1' },
+    body: JSON.stringify({ question: 'x'.repeat(240_000) }),
+  });
+  assert.equal(oversizedQuestion.status, 400);
+  assert.equal((await request(`/api/analyses/${report.id}/discussion`)).length, 1);
   const operations = await request('/api/operations');
   assert.equal(operations.queue.pendingAnalyses, 0);
   await until(() => payloads.some(p => p.path === '/v1/traces' && p.body.includes(Buffer.from('mentor.analysis'))) &&
@@ -109,9 +126,11 @@ try {
   assert.ok(exported.includes('mentor.analysis'));
   assert.ok(exported.includes('mentor.jobs'));
   assert.ok(!exported.includes('PRIVATE_SMOKE_MARKER'));
+  assert.ok(!exported.includes('PRIVATE_DISCUSSION_MARKER'));
   const logs = readdirSync(join(directory, 'logs')).map(file => readFileSync(join(directory, 'logs', file), 'utf8')).join('');
   assert.ok(logs.includes('Background job'));
   assert.ok(!logs.includes('PRIVATE_SMOKE_MARKER'));
+  assert.ok(!logs.includes('PRIVATE_DISCUSSION_MARKER'));
   assert.equal((await fetch(base + '/api/analyses', { method: 'POST' })).status, 403);
   const invalid = await fetch(base + '/api/analyses', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Mentor-Request': '1' },
@@ -121,7 +140,8 @@ try {
   assert.ok((await invalid.json()).traceId);
   console.log(JSON.stringify({ readiness: 'Healthy', conversationsPerAnalysis: 2, exactPrompt: true,
     tracesExported: true, metricsExported: true, privateContentExcluded: true,
-    databaseSettings: true, liveWorkerPolling: true, settingsValidation: true, logsDirectory: directory }));
+    databaseSettings: true, liveWorkerPolling: true, settingsValidation: true, discussionAnswer: true,
+    discussionContextLimit: true, logsDirectory: directory }));
 } finally {
   server.kill();
   await new Promise((done) => server.exitCode !== null ? done() : server.once('exit', done));

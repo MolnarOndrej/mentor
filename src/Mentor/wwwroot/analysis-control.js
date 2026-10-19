@@ -1,4 +1,6 @@
 export function analysisControl(state, day) {
+  if (state?.discussions?.some((t) => t.day === day && ['queued', 'running'].includes(t.status)))
+    return { enabled: false, status: 'running', label: 'Probíhá odpověď' };
   const attempts = state?.analyses.filter((a) => a.day === day) || [];
   const active = attempts.find((a) => ['queued', 'running'].includes(a.status));
   if (active)

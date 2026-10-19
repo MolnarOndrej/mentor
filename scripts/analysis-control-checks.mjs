@@ -43,3 +43,16 @@ assert.equal(analysisControl(state, day).enabled, false);
 state.today = '2026-10-19';
 assert.equal(analysisControl(state, day).enabled, false);
 console.log('Analysis control checks passed: empty, ready, queued, running, failed, completed, new imports and day isolation.');
+
+state.conversations = [{ status: 'ready', days: [{ day, messageCount: 1 }] }];
+for (const status of ['queued', 'running']) {
+  state.discussions = [{ day, status }];
+  assert.equal(analysisControl(state, day).enabled, false, 'Answer reserves the day');
+  assert.equal(analysisControl(state, day).label, 'Probíhá odpověď');
+  state.discussions[0].day = '2026-10-19';
+  assert.equal(analysisControl(state, day).enabled, true, 'Answer does not reserve other days');
+}
+for (const status of ['completed', 'failed']) {
+  state.discussions = [{ day, status }];
+  assert.equal(analysisControl(state, day).enabled, true, 'Finished answer releases the day');
+}

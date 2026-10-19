@@ -1,6 +1,7 @@
 using Mentor.Application.Analyses;
 using Mentor.Application.Configuration;
 using Mentor.Application.Conversations;
+using Mentor.Application.Discussions;
 using Mentor.Application.Processing;
 using Mentor.Application.Prompts;
 
@@ -44,11 +45,14 @@ public sealed class MentorService(
 
         return new(summaries, reports.Select(a => new AnalysisSummary(
             a.Id, a.Status, a.Trigger, a.CreatedAt, a.CompletedAt, a.Day, a.ConversationIds,
-            a.MessageKeys.Count, a.Error)).ToList(), settings.Settings(), DailySchedule.Day(clock.GetUtcNow()), TimeZoneInfo.Local.Id, changedDays);
+            a.MessageKeys.Count, a.Error)).ToList(), settings.Settings(), DailySchedule.Day(clock.GetUtcNow()), TimeZoneInfo.Local.Id, changedDays, queue.DiscussionSummaries());
     }
 
     public Conversation? GetConversation(long id) => conversations.FindConversation(id);
     public Analysis? GetAnalysis(long id) => analyses.FindAnalysis(id);
+    public List<DiscussionTurn> GetDiscussion(long id) => queue.Discussion(id);
+    public long AskQuestion(long id, string question) => queue.EnqueueAnswer(id, question);
+    public void RetryAnswer(long id) => queue.RetryAnswer(id);
     public Task<RefreshConversationResult> RefreshConversationAsync(long id, CancellationToken cancellationToken) =>
         refresher.RefreshAsync(id, cancellationToken);
 

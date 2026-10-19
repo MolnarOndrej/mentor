@@ -604,3 +604,24 @@ dialog::backdrop {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.discussion {
+  margin-top: 2rem;
+  border-top: 1px solid var(--border, #ddd);
+  padding-top: 1rem;
+}
+.discussion-turn {
+  margin-bottom: 1.5rem;
+}
+.discussion-question {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.discussion-form {
+  display: grid;
+  gap: 0.6rem;
+}
+.discussion-form textarea {
+  width: 100%;
+  min-height: 6rem;
+  resize: vertical;
+}

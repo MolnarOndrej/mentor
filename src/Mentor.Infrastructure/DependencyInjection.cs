@@ -2,6 +2,7 @@ using Mentor.Application.Analyses;
 using Mentor.Application.Configuration;
 using Mentor.Application.Conversations;
 using Mentor.Application.Diagnostics;
+using Mentor.Application.Discussions;
 using Mentor.Application.Processing;
 using Mentor.Infrastructure.Analyses;
 using Mentor.Infrastructure.Configuration;
@@ -59,6 +60,7 @@ public static class DependencyInjection
         services.AddSingleton<ICliProcessRunner, CliProcessRunner>();
         services.AddSingleton<CodexCliAnalyzer>();
         services.AddSingleton<IConversationAnalyzer>(p => p.GetRequiredService<CodexCliAnalyzer>());
+        services.AddSingleton<IDiscussionResponder>(p => p.GetRequiredService<CodexCliAnalyzer>());
         services.AddSingleton<ICodexAvailability>(p => p.GetRequiredService<CodexCliAnalyzer>());
         return services;
     }

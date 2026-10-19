@@ -3,6 +3,7 @@ using Mentor.Application.Configuration;
 using Mentor.Endpoints.Analyses;
 using Mentor.Endpoints.Conversations;
 using Mentor.Endpoints.Prompts;
+using Mentor.Endpoints.Discussions;
 
 namespace Mentor.Endpoints;
 
@@ -34,6 +35,18 @@ public static class MentorEndpoints
         });
         api.MapGet("/analyses/{id:long}", (long id, MentorService service) =>
             service.GetAnalysis(id) is { } row ? Results.Ok(row) : Results.NotFound());
+        api.MapGet("/analyses/{id:long}/discussion", (long id, MentorService service) =>
+            service.GetAnalysis(id) is { Status: "completed" } ? Results.Ok(service.GetDiscussion(id)) : Results.NotFound());
+        api.MapPost("/analyses/{id:long}/discussion", (long id, AskQuestionRequest request, MentorService service) =>
+            Results.Accepted(value: new
+            {
+                id = service.AskQuestion(id, request.Question)
+            }));
+        api.MapPost("/discussion/{id:long}/retry", (long id, MentorService service) =>
+        {
+            service.RetryAnswer(id);
+            return Results.Accepted();
+        });
         api.MapGet("/analyses/{id:long}/prompt", (long id, MentorService service) =>
             service.GetAnalysis(id) == null ? Results.NotFound() : Results.Ok(new
             {
