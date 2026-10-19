@@ -49,6 +49,7 @@ public sealed class WorkProcessor(
             if (input.Conversations.Count == 0)
                 throw new InvalidOperationException("Pro tento den nejsou analyzovatelné zprávy.");
             var result = await analyzer.AnalyzeAsync(input, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             queue.AnalysisDone(batch.Value.Id, result);
         }, error => queue.AnalysisFailed(batch.Value.Id, error), cancellationToken);
         return true;
@@ -72,7 +73,7 @@ public sealed class WorkProcessor(
         {
             outcome = "cancelled";
             if (kind == "analysis")
-                fail("Aplikace byla během rozboru ukončena. Spusťte nový rozbor.");
+                fail("Rozbor byl přerušen ukončením aplikace. Spusťte nový rozbor.");
             // An interrupted import is recovered from its durable claim on restart.
             throw;
         }

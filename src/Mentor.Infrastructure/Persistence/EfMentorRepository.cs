@@ -36,7 +36,7 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         foreach (var analysis in db.Analyses.Where(x => x.Status == "running").ToList())
         {
             analysis.Status = "failed";
-            analysis.Error = "Aplikace byla během rozboru ukončena. Spusťte nový rozbor.";
+            analysis.Error = "Rozbor byl přerušen ukončením aplikace. Spusťte nový rozbor.";
             analysis.CompletedAt = Now();
             db.Analyses.RemoveRange(db.Analyses.Where(x => x.Day == analysis.Day && x.Status == "failed"));
         }

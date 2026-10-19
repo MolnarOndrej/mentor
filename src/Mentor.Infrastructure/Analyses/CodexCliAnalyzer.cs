@@ -4,6 +4,7 @@ using Mentor.Application.Analyses;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Prompts;
 using Mentor.Infrastructure.Configuration;
+using Mentor.Infrastructure.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Mentor.Infrastructure.Analyses;
@@ -54,6 +55,8 @@ public sealed class CodexCliAnalyzer(IOptions<MentorInfrastructureOptions> optio
         var started = false;
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            CodexProcessLifetime.EnsureBound();
             started = process.Start();
             if (!started)
                 throw new InvalidOperationException("Codex CLI se nepodařilo spustit.");

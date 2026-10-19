@@ -13,6 +13,16 @@ using Mentor.Infrastructure.Conversations;
 using Microsoft.Extensions.Options;
 
 // Also acts as a deterministic CLI process for testing process failures and JSONL handling.
+if (args.FirstOrDefault() == "--lifetime-host")
+{
+    await CodexLifetimeFixture.RunHostAsync(args[1]);
+    return 0;
+}
+if (args.FirstOrDefault() == "--lifetime-descendant")
+{
+    await Task.Delay(Timeout.InfiniteTimeSpan);
+    return 0;
+}
 if (args.FirstOrDefault() == "exec")
 {
     Console.OutputEncoding = new System.Text.UTF8Encoding(false);
@@ -22,6 +32,9 @@ if (args.FirstOrDefault() == "exec")
         File.WriteAllText(capture, received);
     switch (Environment.GetEnvironmentVariable("MENTOR_FAKE_MODE"))
     {
+        case "hang":
+            await CodexLifetimeFixture.HangAsync(args);
+            return 0;
         case "exit":
             Console.Error.Write("Test failure");
             return 7;
@@ -230,5 +243,7 @@ try
 catch (System.ComponentModel.Win32Exception) { Check(true, "missing CLI preserves original failure"); }
 await ApplicationChecks.RunAsync(Check);
 await PersistenceChecks.RunAsync(Check);
+await AnalysisInterruptionChecks.RunAsync(Check);
+await CodexLifetimeChecks.RunAsync(Check);
 Console.WriteLine($"{passed} checks passed.");
 return 0;
