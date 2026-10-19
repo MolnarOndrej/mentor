@@ -8,6 +8,7 @@ using Mentor.Infrastructure.Configuration;
 using Mentor.Infrastructure.Conversations;
 using Mentor.Infrastructure.Hosting;
 using Mentor.Infrastructure.Persistence;
+using Mentor.Infrastructure.Processes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,6 +56,7 @@ public static class DependencyInjection
             client.Timeout = provider.GetRequiredService<IOptions<MentorInfrastructureOptions>>().Value.ImportTimeout;
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Mentor/1.0");
         }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
+        services.AddSingleton<ICliProcessRunner, CliProcessRunner>();
         services.AddSingleton<CodexCliAnalyzer>();
         services.AddSingleton<IConversationAnalyzer>(p => p.GetRequiredService<CodexCliAnalyzer>());
         services.AddSingleton<ICodexAvailability>(p => p.GetRequiredService<CodexCliAnalyzer>());

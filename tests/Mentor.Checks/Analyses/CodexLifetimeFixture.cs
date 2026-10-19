@@ -5,6 +5,7 @@ using Mentor.Checks.Persistence;
 using Mentor.Checks.TestDoubles;
 using Mentor.Infrastructure.Analyses;
 using Mentor.Infrastructure.Configuration;
+using Mentor.Infrastructure.Processes;
 using Microsoft.Extensions.Options;
 
 namespace Mentor.Checks.Analyses;
@@ -28,7 +29,7 @@ internal static class CodexLifetimeFixture
         {
             CodexExecutable = Environment.ProcessPath!,
             DataDirectory = directory
-        }), telemetry);
+        }), telemetry, new CliProcessRunner());
         await analyzer.AnalyzeAsync(batch.Input, default);
     }
 

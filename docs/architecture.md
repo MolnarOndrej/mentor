@@ -11,7 +11,8 @@ Tato místa jsou nyní oddělená. Rozhraní jsou definovaná podle potřeb konz
 Každý typ má vlastní stejně pojmenovaný soubor a namespace podle složky.
 V Application jsou typy seskupené do `Conversations`, `Analyses`, `Prompts`,
 `Configuration`, `Processing`, `Diagnostics` a `Dashboard`. Infrastructure
-obsahuje implementace importu v `Conversations`, CLI v `Analyses` a databázové
+obsahuje implementace importu v `Conversations`, adaptéry CLI v `Analyses`,
+obecný runner a platformní spouštění v `Processes` a databázové
 entity v doménových podsložkách `Persistence`. HTTP požadavky jsou oddělené
 pod `Endpoints` podle příslušné domény, health checky pod
 `Observability/HealthChecks`. Testovací dvojníci mají samostatné soubory v
@@ -35,7 +36,9 @@ Mentor (HTTP, UI, host, monitoring)
 | `MentorDbContext` | EF Core model, mapování tabulek a JSON kolekcí |
 | `EfMentorRepository` | LINQ, trvalá fronta, atomické claimy a neměnné snímky |
 | `ChatGptImporter`, `ChatGptShareParser` | Odděleně přenos HTTP a čtení obsahu |
-| `CodexCliAnalyzer`, `CodexResponseParser` | Odděleně proces a kontrola výsledku protokolu |
+| `CodexCliAnalyzer`, `CodexResponseParser` | Argumenty, pravidla Codexu a kontrola výsledku protokolu |
+| `ICliProcessRunner`, `CliProcessRunner` | Obecné spuštění CLI, UTF-8 I/O, exit kód, timeout, limity a zrušení |
+| `WindowsCliProcessLauncher`, `PortableCliProcessLauncher` | Windows job pro každý běh; mimo Windows spuštění přes .NET Process |
 | `MentorWorker` | Životní cyklus BackgroundService, interval a shutdown |
 | `MentorEndpoints` | Pouze mapování HTTP na business službu |
 | `LocalAccessMiddleware`, `ApiErrorMiddleware` | Lokální přístup a jednotné chyby s trace ID |

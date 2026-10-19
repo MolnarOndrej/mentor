@@ -6,13 +6,17 @@ using Mentor.Checks.Application;
 using Mentor.Checks.Analyses;
 using Mentor.Checks.Conversations;
 using Mentor.Checks.Persistence;
+using Mentor.Checks.Processes;
 using Mentor.Checks.TestDoubles;
 using Mentor.Infrastructure.Analyses;
 using Mentor.Infrastructure.Configuration;
 using Mentor.Infrastructure.Conversations;
+using Mentor.Infrastructure.Processes;
 using Microsoft.Extensions.Options;
 
 // Also acts as a deterministic CLI process for testing process failures and JSONL handling.
+if (args.FirstOrDefault() == "--runner-fixture")
+    return await CliProcessFixture.RunAsync(args[1..]);
 if (args.FirstOrDefault() == "--lifetime-host")
 {
     await CodexLifetimeFixture.RunHostAsync(args[1]);
@@ -189,7 +193,7 @@ Check(store.EnqueueAnalysis("daily", "2026-12-01") == 0, "daily claim persisted"
 Check(store.ClaimAnalysis() == null, "empty daily analysis creates no report");
 var config = new MentorInfrastructureOptions { CodexExecutable = Environment.ProcessPath!, DataDirectory = path };
 using var telemetry = new MentorTelemetry();
-var analyzer = new CodexCliAnalyzer(Options.Create(config), telemetry);
+var analyzer = new CodexCliAnalyzer(Options.Create(config), telemetry, new CliProcessRunner());
 var input = new AnalysisInput(day, "Custom editable instruction\n{{data}}", batch.Input.Conversations);
 var raw = AnalysisPrompt.Build(input);
 Check(!AnalysisPrompt.Data(input).Contains('\r'), "generated data uses browser-compatible line endings");
@@ -245,5 +249,6 @@ await ApplicationChecks.RunAsync(Check);
 await PersistenceChecks.RunAsync(Check);
 await AnalysisInterruptionChecks.RunAsync(Check);
 await CodexLifetimeChecks.RunAsync(Check);
+await CliProcessChecks.RunAsync(Check);
 Console.WriteLine($"{passed} checks passed.");
 return 0;

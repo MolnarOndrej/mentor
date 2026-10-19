@@ -4,6 +4,7 @@ using Mentor.Checks.Persistence;
 using Mentor.Checks.TestDoubles;
 using Mentor.Infrastructure.Analyses;
 using Mentor.Infrastructure.Configuration;
+using Mentor.Infrastructure.Processes;
 using Microsoft.Extensions.Options;
 
 namespace Mentor.Checks.Analyses;
@@ -16,12 +17,18 @@ internal static class CodexLifetimeChecks
             return;
         var directory = Path.Combine(Path.GetTempPath(), "mentor-lifetime-" + Guid.NewGuid());
         Directory.CreateDirectory(directory);
-        var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false, CreateNoWindow = true };
+        var start = new ProcessStartInfo(Environment.ProcessPath!)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardError = true
+        };
         start.ArgumentList.Add("--lifetime-host");
         start.ArgumentList.Add(directory);
         start.Environment["MENTOR_FAKE_MODE"] = "hang";
         start.Environment["MENTOR_LIFETIME_DIRECTORY"] = directory;
         using var host = Process.Start(start)!;
+        var hostError = host.StandardError.ReadToEndAsync();
         var children = new List<Process>();
         try
         {
@@ -30,7 +37,7 @@ internal static class CodexLifetimeChecks
             while (!File.Exists(marker))
             {
                 if (host.HasExited)
-                    throw new Exception($"Lifetime fixture exited with {host.ExitCode}");
+                    throw new Exception($"Lifetime fixture exited with {host.ExitCode}: {await hostError}");
                 await Task.Delay(25, readyTimeout.Token);
             }
             // Keep real process handles: PID reuse cannot turn this into a false positive.
@@ -58,7 +65,7 @@ internal static class CodexLifetimeChecks
             {
                 CodexExecutable = Environment.ProcessPath!,
                 DataDirectory = directory
-            }), telemetry);
+            }), telemetry, new CliProcessRunner());
             repository.AnalysisDone(retry, await analyzer.AnalyzeAsync(batch.Input, default));
             check(repository.Analyses() is [{ Status: "completed", Result: "Testovací rozbor" }],
                 "interrupted generation can be retried and replaces the original only after success");

@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Mentor.Infrastructure.Hosting;
+namespace Mentor.Infrastructure.Processes;
 
 // Native JOBOBJECT_EXTENDED_LIMIT_INFORMATION, including its embedded basic limits and IO counters.
 [StructLayout(LayoutKind.Sequential)]
