@@ -36,12 +36,12 @@ const environment = {
   ...process.env,
   Mentor__DataDirectory: directory,
   Mentor__CodexExecutable: fakeCli,
+  MENTOR_CAPTURE_FILE: join(directory, 'stdin.txt'),
   OTEL_EXPORTER_OTLP_ENDPOINT: `http://127.0.0.1:${collector.address().port}`,
   OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
   OTEL_METRIC_EXPORT_INTERVAL: '500',
   OTEL_BSP_SCHEDULE_DELAY: '200',
 };
-delete environment.MENTOR_CAPTURE_FILE;
 delete environment.MENTOR_FAKE_MODE;
 const server = spawn(app, [], { cwd: join(root, 'src/Mentor'), env: environment, windowsHide: true });
 let diagnostics = '';
@@ -92,15 +92,17 @@ try {
   const readiness = await request('/health/ready');
   assert.equal(readiness.status, 'Healthy');
   const day = state.conversations[0].days[0].day;
-  const rendered = await request('/api/prompt/render', { day });
-  const accepted = await request('/api/analyses', { day, prompt: rendered.prompt, data: rendered.data });
+  const template = (await request('/api/prompt', { prompt: state.settings.prompt }, 'PUT')).template;
+  const accepted = await request('/api/analyses', { day, prompt: template });
   const report = await until(async () => {
     const result = await request(`/api/analyses/${accepted.id}`);
     assert.notEqual(result.status, 'failed', result.error);
     return result.status === 'completed' ? result : null;
   });
   assert.equal(report.conversationIds.length, 2);
-  assert.equal((await request(`/api/analyses/${report.id}/prompt`)).prompt, rendered.prompt);
+  const fullPrompt = (await request(`/api/analyses/${report.id}/prompt`)).prompt;
+  assert.equal(fullPrompt, readFileSync(environment.MENTOR_CAPTURE_FILE, 'utf8'));
+  assert.ok(fullPrompt.includes('PRIVATE_SMOKE_MARKER'));
   assert.deepEqual(await request(`/api/analyses/${report.id}/discussion`), []);
   const question = await request(`/api/analyses/${report.id}/discussion`, { question: 'PRIVATE_DISCUSSION_MARKER' });
   const discussion = await until(async () => {

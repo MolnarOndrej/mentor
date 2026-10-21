@@ -27,8 +27,7 @@ internal static class RefreshChecks
         await processor.ProcessNextAsync(default);
         await processor.ProcessNextAsync(default);
         var before = repository.FindConversation(first)!;
-        var reviewed = service.RenderPrompt("2026-10-18", null);
-        var analysis = service.AnalyzeDay("2026-10-18", reviewed.Prompt, reviewed.Data);
+        var analysis = service.AnalyzeDay("2026-10-18");
         importer.Data = new("Updated title", [new("user", "New content", 1), new("assistant", "New answer", 2), new("user", "More", 3)]);
         importer.UnavailableUrls.Add(secondUrl);
         importer.Calls.Clear();
@@ -76,7 +75,7 @@ internal static class RefreshChecks
             "archived conversation cannot be refreshed");
         check(!repository.DeleteToday(second) && !repository.RefreshToday(second, importer.Data),
             "persistence rejects modification of archived conversations");
-        service.AnalyzeDay("2026-10-18", null, null);
+        service.AnalyzeDay("2026-10-18");
         await processor.ProcessNextAsync(default);
         check(importer.Calls.Count == 0, "archived analysis never reloads source links");
     }

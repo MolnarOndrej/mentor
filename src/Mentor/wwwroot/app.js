@@ -32,8 +32,8 @@ function button(text, action, cls = 'secondary') {
   };
   return b;
 }
-function badge(status, text) {
-  return el('span', text || labels[status] || status, 'badge ' + status);
+function badge(status) {
+  return el('span', labels[status] || status, 'badge ' + status);
 }
 let state,
   selectedDay = null,
@@ -48,7 +48,7 @@ const runtimeSettingsEditor = new RuntimeSettingsEditor((saved) => {
   state.settings.runtime = saved;
   configurePolling(saved.pollIntervalSeconds);
 });
-const navigation = new Navigation(() => {});
+const navigation = new Navigation();
 const archiveCalendar = new ArchiveCalendar($('archive'), (list, day) => {
   for (const c of dayRows(day)) list.append(conversationCard(c, day, false, true));
 });
@@ -80,7 +80,6 @@ function totals(day) {
   return {
     conversations: rows.length,
     messages: rows.reduce((n, c) => n + c.coverage.messageCount, 0),
-    analyzed: rows.reduce((n, c) => n + c.coverage.analyzedCount, 0),
   };
 }
 function canAnalyze(day) {

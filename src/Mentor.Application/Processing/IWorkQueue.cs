@@ -10,7 +10,7 @@ public interface IWorkQueue
     Conversation? ClaimImport();
     void ImportDone(long id, ImportedConversation data);
     void ImportFailed(long id, string error);
-    long EnqueueAnalysis(string trigger, string? day = null, string? promptOverride = null, string? expectedData = null);
+    long EnqueueAnalysis(string trigger, string? day = null, string? promptOverride = null);
     (long Id, AnalysisInput Input)? ClaimAnalysis();
     AnalysisInput RefreshAnalysisInput(long id);
     void AnalysisDone(long id, string result);

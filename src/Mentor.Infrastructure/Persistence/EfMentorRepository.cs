@@ -151,11 +151,7 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         var entity = db.Conversations.SingleOrDefault(x => x.Id == id);
         if (entity == null || !IsToday(entity) || entity.Status is "queued" or "importing")
             return false;
-        entity.Title = data.Title;
-        entity.Messages = data.Messages;
-        entity.Status = "ready";
-        entity.ImportedAt = Now();
-        entity.Error = null;
+        ApplyImport(entity, data);
         return true;
     });
 
@@ -180,14 +176,16 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         return entity.ToModel();
     });
 
-    public void ImportDone(long id, ImportedConversation data) => UpdateConversation(id, entity =>
+    public void ImportDone(long id, ImportedConversation data) => UpdateConversation(id, entity => ApplyImport(entity, data));
+
+    private void ApplyImport(ConversationEntity entity, ImportedConversation data)
     {
         entity.Title = data.Title;
         entity.Messages = data.Messages;
         entity.Status = "ready";
         entity.ImportedAt = Now();
         entity.Error = null;
-    });
+    }
 
     public void ImportFailed(long id, string error) => UpdateConversation(id, entity =>
     {
@@ -195,7 +193,7 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         entity.Error = error;
     });
 
-    public long EnqueueAnalysis(string trigger, string? day = null, string? promptOverride = null, string? expectedData = null)
+    public long EnqueueAnalysis(string trigger, string? day = null, string? promptOverride = null)
     {
         day ??= DailySchedule.Day(clock.GetUtcNow());
         ValidateDay(day);
@@ -234,11 +232,6 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
             if (trigger == "daily")
                 settings.LastDailyDate = day;
             var entity = new AnalysisEntity { Trigger = trigger, CreatedAt = Now(), Day = day, Prompt = settings.Prompt };
-            if (expectedData != null)
-            {
-                var input = new AnalysisInput(day, settings.Prompt, batch);
-                Snapshot(entity, input);
-            }
             db.Analyses.Add(entity);
             db.SaveChanges();
             return entity.Id;
@@ -252,32 +245,27 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         var entity = db.Analyses.Where(x => x.Status == "queued").OrderBy(x => x.Id).FirstOrDefault();
         if (entity == null)
             return null;
-        var conversations = ReadConversations(db);
-        var batch = entity.FullPrompt == null ? SelectDay(conversations, entity.Day)
-            : RestoreSnapshot(conversations, entity.MessageKeys.ToHashSet());
-        var input = new AnalysisInput(entity.Day, entity.Prompt, batch, entity.FullPrompt);
-        if (entity.FullPrompt == null)
-            Snapshot(entity, input);
+        var input = Snapshot(entity, ReadConversations(db));
         entity.Status = "running";
         return (entity.Id, input);
     });
 
-    private static void Snapshot(AnalysisEntity entity, AnalysisInput input)
+    private static AnalysisInput Snapshot(AnalysisEntity entity, List<Conversation> conversations)
     {
+        var input = new AnalysisInput(entity.Day, entity.Prompt, SelectDay(conversations, entity.Day));
         entity.ConversationIds = input.Conversations.Select(x => x.Id).ToList();
         entity.MessageKeys = input.Conversations.SelectMany(c => c.Messages.Select(m => MessageKey(c.Id, m))).ToList();
         entity.FullPrompt = AnalysisPrompt.Build(input);
+        return input with
+        {
+            FullPrompt = entity.FullPrompt
+        };
     }
 
     public AnalysisInput RefreshAnalysisInput(long id) => Write(db =>
     {
         var entity = db.Analyses.Single(x => x.Id == id && x.Status == "running");
-        var input = new AnalysisInput(entity.Day, entity.Prompt, SelectDay(ReadConversations(db), entity.Day));
-        Snapshot(entity, input);
-        return input with
-        {
-            FullPrompt = entity.FullPrompt
-        };
+        return Snapshot(entity, ReadConversations(db));
     });
 
     public void AnalysisDone(long id, string result) => Write(db =>

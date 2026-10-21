@@ -1,3 +1,3 @@
 namespace Mentor.Endpoints.Prompts;
 
-public record SavePromptRequest(string? Prompt, string? Data);
+public record SavePromptRequest(string Prompt);

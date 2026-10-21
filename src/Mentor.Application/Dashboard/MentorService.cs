@@ -19,9 +19,10 @@ public sealed class MentorService(
     public MentorState GetState()
     {
         var reports = analyses.Analyses();
-        var coverage = reports.Where(a => a.Status == "completed")
+        var latestReports = reports.Where(a => a.Status == "completed")
             .GroupBy(a => a.Day)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.Id).First().MessageKeys.ToHashSet());
+            .ToDictionary(g => g.Key, g => g.MaxBy(a => a.Id)!);
+        var coverage = latestReports.ToDictionary(pair => pair.Key, pair => pair.Value.MessageKeys.ToHashSet());
 
         var stored = conversations.Conversations();
         var summaries = stored.Select(c =>
@@ -37,7 +38,7 @@ public sealed class MentorService(
         var changedDays = summaries.SelectMany(c => c.Days.Select(d => d.Day)).Concat(reports.Select(a => a.Day))
             .Distinct().Where(day =>
             {
-                var latest = reports.Where(a => a.Day == day && a.Status == "completed").MaxBy(a => a.Id);
+                var latest = latestReports.GetValueOrDefault(day);
                 var batch = DailyAnalysisPolicy.SelectDay(stored, day);
                 return latest == null ? batch.Count > 0 : analyses.FullPrompt(latest.Id) !=
                     AnalysisPrompt.Build(new AnalysisInput(day, latest.Prompt, batch));
@@ -87,34 +88,11 @@ public sealed class MentorService(
             throw new ArgumentException("Znovu načíst lze jen neúspěšný import.");
     }
 
-    public string SavePrompt(string? prompt, string? data)
+    public string SavePrompt(string prompt)
     {
-        EnsureFullPromptSize(prompt);
-        var template = AnalysisPrompt.Template(prompt!, data);
-        settings.SavePrompt(template);
-        return template;
+        settings.SavePrompt(prompt);
+        return prompt;
     }
 
-    public PromptContent RenderPrompt(string day, string? prompt)
-    {
-        DailyAnalysisPolicy.ValidateDay(day);
-        var template = prompt ?? settings.Settings().Prompt;
-        AnalysisPrompt.Validate(template);
-        var input = new AnalysisInput(day, template, DailyAnalysisPolicy.SelectDay(conversations.Conversations(), day));
-        return new(AnalysisPrompt.Build(input), AnalysisPrompt.Data(input));
-    }
-
-    public long AnalyzeDay(string? day, string? prompt, string? data)
-    {
-        if (prompt != null)
-            EnsureFullPromptSize(prompt);
-        var template = prompt == null ? null : AnalysisPrompt.Template(prompt, data);
-        return queue.EnqueueAnalysis("manual", day, template, data);
-    }
-
-    private static void EnsureFullPromptSize(string? prompt)
-    {
-        if (string.IsNullOrWhiteSpace(prompt) || prompt.Length > AnalysisPrompt.MaximumInputCharacters)
-            throw new ArgumentException("Celý prompt musí mít 1 až 240 000 znaků.");
-    }
+    public long AnalyzeDay(string? day, string? prompt = null) => queue.EnqueueAnalysis("manual", day, prompt);
 }

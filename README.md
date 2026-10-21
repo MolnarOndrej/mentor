@@ -1,12 +1,10 @@
 # Mentor
 
-Osobní AI kouč v češtině. ASP.NET Core 10, jedna stránka v HTML/JS, Entity Framework Core se SQLite a jeden background worker. Bez přihlášení, pouze `http://127.0.0.1:5178`.
-
-Kód má tři vrstvy: `Mentor.Application` (pravidla a rozhraní), `Mentor.Infrastructure` (SQLite, import, Codex CLI) a `Mentor` (web, UI, host a monitoring). Rozbor kódu, rozhodnutí a další doporučení jsou v [architektuře](docs/architecture.md); provozní endpointy, logy a OTLP v [provozním návodu](docs/operations.md).
+Osobní AI kouč v češtině. ASP.NET Core 10, HTML/JavaScript, SQLite přes Entity Framework Core a jedna trvalá fronta úloh. Aplikace nemá přihlášení a běží pouze na `http://127.0.0.1:5178`.
 
 ## Spuštění na Windows
 
-Potřebujete .NET SDK 10 a Codex CLI dostupný jako `codex.exe`. Přihlaste CLI pod stejným Windows účtem, který spouští Mentor:
+Potřebujete .NET SDK podle `global.json` a nativní `codex.exe` v PATH. CLI přihlaste pod stejným Windows účtem, který spouští Mentor:
 
 ```powershell
 codex login
@@ -14,86 +12,65 @@ codex login status
 ./start-mentor.ps1
 ```
 
-Otevřete http://127.0.0.1:5178. Alternativně: `dotnet run --project src/Mentor --no-launch-profile`. Port je záměrně pevný a middleware odmítá ne-lokální přístup i cizí Host/Origin. Nevystavujte aplikaci přes veřejný proxy server ani tunel.
+Otevřete http://127.0.0.1:5178. Alternativně spusťte `dotnet run --project src/Mentor --no-launch-profile`. Middleware kontroluje lokální přístup, Host a Origin; aplikaci nevystavujte veřejnou proxy ani tunelem. Rozbor posílá obsah přihlášenému Codex CLI a službě OpenAI, nejde o offline zpracování.
 
 ## Použití
 
-Pod nadpisem Mentor je stálá navigace **Přehled, Nastavení, Instrukce kouče a Archiv**. Každá sekce má vlastní ikonu a adresu (`#/overview`, `#/settings`, `#/prompt`, `#/archive`); aktivní sekce je zvýrazněná. Na přehled se vrátíte i kliknutím na nadpis Mentor. Funguje historie prohlížeče i obnovení otevřené sekce. Přepínání zachová rozepsané formuláře, vybraný den a pozici v jednotlivých sekcích; instrukce kouče i nastavení se automaticky ukládají po sekundě bez psaní nebo při opuštění pole. Neplatné hodnoty se neuloží a chyba ukládání zůstane viditelná. Při odchodu s neuloženými změnami prohlížeč zobrazí upozornění.
+1. V **Přehledu** vložte veřejný textový odkaz ChatGPT (`https://chatgpt.com/share/<id>`) nebo Codexu (`https://chatgpt.com/s/cx_<id>`). Import začne na pozadí. Po stavu „Uloženo“ lze kliknutím na název otevřít uložené zprávy.
+2. Spusťte **Analyzovat**, nebo nechte aplikaci a počítač běžet do času nastaveného v **Nastavení** (výchozí 22:00). Jeden rozbor zahrne všechny úspěšně importované konverzace daného dne. Celá konverzace patří ke dni vložení odkazu v systémovém časovém pásmu; původní časy zpráv se nepoužívají.
+3. **Instrukce kouče** upravují pravidla rozboru. Instrukce i nastavení se ukládají automaticky po sekundě bez psaní nebo při opuštění pole; chyba ukládání zůstane viditelná. Před rozborem se ukládání instrukcí dokončí. JSON konverzací doplňuje backend. Přesný odeslaný prompt je dostupný v podrobnostech běhu.
+4. Pod dokončeným rozborem můžete položit otázku. Každá odpověď je samostatná úloha s původním zadáním, podklady, výsledkem a dokončenou diskusí. Otevření diskuse samo CLI nespouští. Neúspěšnou odpověď lze zopakovat.
+5. V **Archivu** otevřete starší den a případně spusťte jeho rozbor ručně. Aplikace po startu doplní dnešní rozbor, pokud jeho čas již uplynul; starší vynechané dny automaticky nedoplňuje.
 
-1. Vložte veřejný sdílený odkaz na konverzaci ChatGPT (`https://chatgpt.com/share/<id>`) nebo Codexu (`https://chatgpt.com/s/cx_<id>`). Import začne na pozadí hned po uložení.
-2. Po stavu „Uloženo“ je v databázi kopie zpráv i zdrojový odkaz. Před každým dnešním rozborem se všechny dnešní odkazy znovu načtou. Nedostupný nebo smazaný odkaz ponechá poslední uloženou kopii. Kliknutím na název zobrazíte uložené zprávy s autory a pořadím.
-3. Pod vložením odkazu je dnešní rozbor. Klikněte na „Analyzovat“ nebo nechte aplikaci běžet do nastaveného času (výchozí 22:00 v systémovém časovém pásmu). Starší den otevřete tlačítkem „Archiv“ nahoře; tlačítko „Dnes“ vás vrátí zpět.
-4. Celá konverzace ChatGPT i Codexu patří ke **dni vložení odkazu** v systémovém časovém pásmu. Datum se uloží automaticky při přidání odkazu a nemění se při dokončení nebo opakování importu. Původní časy jednotlivých zpráv se nenačítají, neukládají ani neposílají do rozboru. Konverzace se mezi dny nedělí; zachovává se pořadí a čísla zpráv pro citace.
-5. Každý běh vytvoří **jeden společný rozbor všech zpráv daného dne ze všech konverzací**. Opakované spuštění zahrne i již analyzované zprávy: po přidání další konverzace vznikne aktualizovaná souhrnná verze, ne izolovaný dodatek.
-6. Počty zpráv ukazují pokrytí posledním úspěšným rozborem a počet čekajících zpráv. Archiv po dnech je rozkliknutelný a řazený od nejnovějších. Konverzace v jednotlivých dnech se zobrazují bez číslování, od nejstarší po nejnovější podle vložení odkazu. Z archivu lze otevřít denní rozbor. Při selhání zůstává předchozí úspěšný výsledek viditelný.
-7. U dnešních konverzací šipka aktualizuje jednotlivý odkaz a koš odstraní konverzaci z aplikace i databáze. Pokud odkaz nefunguje, zobrazí se zpráva s příčinou (včetně HTTP chyby) a uložená data zůstanou beze změny. U Codexu se ověřuje i veřejný odkaz, protože samotný datový endpoint může stále nabízet starší snímek. Stejný obsah zobrazí „Konverzace je beze změn“; úspěšná aktualizace se hlásí pouze při změně názvu či zpráv. Archiv tato tlačítka nemá a jeho odkazy se znovu nenačítají. Vedle analýzy je hromadná aktualizace všech dnešních konverzací. Tlačítko „Analyzovat“ umožňuje opakované spuštění i beze změny podkladů. UI i backend spuštění zakážou, pokud den nemá zprávy v úspěšně importovaných konverzacích nebo už jeho rozbor čeká či běží. Odstranění konverzace vyžaduje potvrzení v dialogu; výchozí volba je Zrušit.
+Dnešní odkazy lze obnovit jednotlivě nebo hromadně. Před dnešním rozborem se obnoví automaticky. Nedostupný odkaz ponechá poslední uloženou kopii a zobrazí příčinu. U Codexu se ověřuje také veřejná stránka, protože datový endpoint může držet starý snímek. Archivované odkazy se neobnovují. Smazání dnešní konverzace vyžaduje potvrzení.
 
-Přegenerování existujícího rozboru vyžaduje potvrzení s poznámkou „Po úspěšném dokončení nový rozbor nahradí stávající rozbor.“ Původní rozbor zůstává během generování čitelný. Až po úspěšném dokončení a ověření výsledku se nový výsledek uloží a původní odstraní v jedné databázové transakci. Historie nahrazených rozborů se neuchovává. Chyba posledního pokusu se zobrazuje samostatně a původní rozbor zachovává i po restartu.
+Duplicitní odkaz po normalizaci URL nevytvoří další záznam ani nepřepíše uložený obsah. Neúspěšný import lze opakovat. Import zahrnuje pouze text uživatele a viditelné odpovědi AI s pořadovými čísly pro citace; vynechává interní myšlenky, průběžné komentáře a výstupy nástrojů. Claude a další zdroje nejsou podporované. Importní formáty ChatGPT/Codexu nejsou stabilní veřejné API; neočekávaný formát skončí chybou.
 
-Tlačítko „Instrukce kouče“ nahoře otevře editor instrukcí, které určují chování kouče. Editor neobsahuje JSON konverzací ani zástupný blok dat. Instrukce se automaticky ukládají; před spuštěním analýzy se jejich ukládání dokončí. Konverzace se připojí automaticky při rozboru. Všechna pravidla se čtou z databáze; aplikace pouze doplní blok vstupních dat. Dnešní běh znovu načte zdrojové odkazy a uloží skutečný vstup s aktualizovanými konverzacemi. Přesnou kopii odeslaného promptu včetně JSONu lze otevřít v podrobnostech rozboru. Úprava instrukcí nemění rozpracované ani historické běhy.
+Opakovaný rozbor zahrne celý den a vyžaduje potvrzení nahrazení. Předchozí úspěšný výsledek zůstává čitelný i při selhání nového pokusu. Úspěšné dokončení jej nahradí a odstraní jeho diskusi v jedné transakci; historie nahrazených výsledků se neuchovává. Pro jeden den může čekat nebo běžet jen jeden rozbor či odpověď. Den bez analyzovatelných zpráv rozbor nespustí.
 
-Denní rozbor funguje jen za běhu aplikace a počítače. Při spuštění po nastaveném čase se doplní dnešní rozbor; starší vynechané dny lze spustit ručně v archivu. Letní/zimní čas řeší systémová časová zóna. Zahrnou se všechny zprávy z konverzací vložených daný den a dostupných při zahájení běhu. Později importované zprávy jsou označené jako čekající a celý den lze aktualizovat ručně. Den bez zpráv automatický plán přeskočí bez vytvoření rozboru a bez volání CLI. Současná kliknutí na stejný den nespuštějí dva souběžné rozbory; různé dny zpracovává jedna fronta postupně.
+Navigace zachovává rozepsané formuláře a podporuje historii i obnovení stránky. Nastavení zahrnuje interval pollování 1–3600 sekund (výchozí 5) a čas denního rozboru. Změny se projeví bez restartu a zůstávají v databázi.
 
-Ověřené zdroje jsou **veřejné textové sdílené konverzace ChatGPT a Codexu**. Dodaný ChatGPT odkaz při vývoji obsahoval 10 zpráv (5 uživatelských a 5 odpovědí AI), Codex odkaz jeden uživatelský dotaz a jednu finální odpověď. Codex se načítá z veřejného JSON endpointu `/backend-api/wham/shared_threads/<id>` ve formátu verze 1. Tyto formáty nejsou veřejné stabilní importní API; při změně import skončí skutečnou chybou. Claude a další zdroje nejsou v této verzi implementované. Přihlášení, HTTP blokace, chybějící obsah, netextové zprávy a neočekávaný formát se nepovažují za úspěšný import. Interní myšlenky, průběžné komentáře Codexu a výstupy nástrojů včetně změn souborů se neimportují. Uživatelům nejsou přisuzovány výroky AI.
+## Data a limity
 
-Zdrojové datum zprávy nemá vliv na import. Zpráva obsahuje pouze autora, text a pořadové číslo; datum pro rozbor vychází z vložení odkazu na konverzaci.
+Databáze je v `src/Mentor/Data/mentor.db`, za běhu mohou existovat i soubory WAL/SHM. Data nejsou aplikací šifrovaná. Pro zálohu Mentor zastavte a zkopírujte celý adresář `Data`. Smazání zdrojového sdílení neodstraní kopii v Mentoru.
 
-Stejný odkaz po odstranění query/fragmentu a sjednocení ID znovu nevytvoří záznam. Neúspěšný import lze opakovat. Opětovné vložení uložené konverzace ji nepřepíše novější verzí; dnešní obsah obnoví šipka nebo spuštění dnešního rozboru.
-
-Tlačítko „Nastavení“ nahoře umožňuje měnit interval pollování (1–3600 sekund, výchozí 5 sekund) a čas automatického rozboru (výchozí 22:00 v systémovém časovém pásmu). Obě hodnoty se ukládají do databáze a zachovají se po restartu. Interval řídí obnovování stránky i kontrolu fronty na pozadí; změny se načtou při dalším pollování bez restartu. Posun času na již uplynulou hodinu spustí dnešní automatický rozbor při další kontrole, pokud dnes ještě neběžel.
-
-## Data a konfigurace
-
-Pod dokončeným rozborem je volitelná diskuse. Odeslání otázky uloží její pořadí a stav a zařadí generování odpovědi do fronty. Pouhé otevření rozboru nebo diskuse Codex nevolá. Každá odpověď má vlastní dočasné volání CLI s přesným původním zadáním a snímkem podkladů, výsledkem rozboru, dosavadními otázkami a odpověďmi a novou otázkou. Kontext má limit 240 000 znaků včetně obálky; při překročení se otázka odmítne s chybou bez zkrácení obsahu.
-
-Pro den může čekat nebo běžet jen jeden rozbor či jedna odpověď; souběžné požadavky backend atomicky odmítá (HTTP 409). UI během odpovědi zakáže další otázku i rozbor, během přegenerování zakáže otázky a ponechá původní obsah čitelný. Chyba i přerušení odpovědi zachovají předchozí diskusi a nabídnou opakování téže otázky. Diskuse přežije běžný restart. Úspěšné nahrazení rozboru odstraní jeho diskusi ve stejné transakci; nový rozbor začne prázdný. Tato verze mění schéma SQLite: stávající pilotní databázi je potřeba před prvním spuštěním znovu vytvořit podle pravidla pilotu níže, migrace se neprovádí.
-
-Databáze: `src/Mentor/Data/mentor.db` (včetně WAL/SHM za běhu), vynechaná z Gitu. Obsah není šifrovaný aplikací; chraňte Windows účet a disk. Pro zálohu aplikaci zastavte a zkopírujte celý adresář `Data`. Smazání zdrojového vlákna nesmaže kopii v Mentoru.
-
-Volitelné proměnné prostředí:
-
-| Proměnná | Význam |
+| Omezení | Výchozí hodnota |
 | --- | --- |
-| `Mentor__CodexExecutable` | Úplná cesta k nativnímu `codex.exe`; výchozí `codex.exe` z PATH. Skript ji zjistí automaticky. |
-| `Mentor__DataDirectory` | Absolutní cesta k adresáři databáze; výchozí `Data` uvnitř projektu. |
+| Importní odpověď | 8 MB |
+| Šablona instrukcí včetně bloku `{{data}}` | 20 000 znaků |
+| Celý vstup CLI včetně diskuse | 240 000 znaků |
+| Jeden běh CLI | 10 minut |
 
-Analýza předává vybrané zprávy dne a upravené zadání přihlášenému Codex CLI, které komunikuje se službou OpenAI; nejde o offline model. Aplikace nevolá modelové API přímo. Limit importní stránky je 8 MB, zadání 20 000 znaků, celého vstupu CLI 240 000 znaků a běhu CLI 10 minut. Nadlimitní dávka skončí chybou bez tichého zkrácení či označení zpráv za zpracované.
+Nadlimitní vstup se odmítne bez zkrácení. `prompts/defaultMentorPrompt.txt` plní jen novou databázi; existující instrukce se při restartu nepřepisují. Konfiguraci cest, timeoutů, logů a OTLP popisuje [provozní návod](docs/operations.md).
 
-Soubor `prompts/defaultMentorPrompt.txt` slouží pouze k prvnímu naplnění nové databáze. Existující zadání se z něj při restartu neobnovuje. `AnalysisPrompt.cs` jen dosazuje data do databázové šablony a kontroluje její formát; neobsahuje textové konstanty instrukcí.
+Mentor je pilot: migrace ani zpětná kompatibilita se neimplementují bez výslovného požadavku. Pokud změna schématu vyžaduje čistou databázi, zastavte aplikaci a odstraňte její adresář `Data` (nebo nastavený `Mentor__DataDirectory`). **Běžný restart data zachovává.**
 
-## Codex CLI a spolehlivost
+## Vývoj a ověření
 
-Jediný integrační bod pro analýzu je `IConversationAnalyzer`, implementovaný `CodexCliAnalyzer`. Ten připravuje argumenty a ověřuje JSONL odpověď Codexu; obecný `ICliProcessRunner` / `CliProcessRunner` v `Mentor.Infrastructure.Processes` řeší spuštění, pracovní adresář, prostředí, UTF-8 stdin/stdout/stderr, limity výstupu, timeout a ukončení procesů. Vrací exit kód a oba výstupy bez interpretace protokolu poskytovatele, takže jej může využít také jiný CLI analyzátor. Runner je bez sdíleného stavu běhů a umožňuje jejich nezávislé rušení. CLI se spouští bez shellu/skrytě. Rozbor uspěje až při nulovém exit kódu, události `turn.completed` a neprázdném finálním textu. Selhání, timeout nebo chybějící CLI jsou trvale zaznamenané a konverzace zůstanou k dalšímu pokusu.
-
-Používá `--sandbox read-only`, zákaz schvalování, vypnutý shell/patch/web, `--ignore-user-config`, `--ignore-rules`, `--ephemeral` a prázdný pracovní adresář. Nenačítá projektové instrukce. Importované zprávy jsou v promptu výslovně nedůvěryhodná data. Výstup s událostí akčního nástroje se nepřijme. Účelem CLI je pouze textový rozbor; nepřebírá osobní konfiguraci nástrojů, hooků či MCP. Viz [oficiální dokumentace neinteraktivního Codexu](https://developers.openai.com/codex/noninteractive/).
-
-Na Windows má každý běh vlastní systémový Job Object s příznakem `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. Nativní `CreateProcessW` s `PROC_THREAD_ATTRIBUTE_JOB_LIST` zařadí CLI do jobu už při vytvoření, bez mezery mezi spuštěním a přiřazením; viz [postup Microsoftu](https://devblogs.microsoft.com/oldnewthing/20230209-00/?p=107812/). Potomci CLI členství zdědí. Mentor sám do těchto jobů nepatří a drží jejich nezděditelné handly. Zrušení, timeout, limit výstupu i dokončení kořenového procesu ukončí potomky daného běhu; jiné běhy a ostatní procesy Mentoru neovlivní. Při násilném ukončení Mentoru Windows zavře handly a ukončí všechny jeho CLI joby.
-
-Mimo Windows používá samostatná přenositelná implementace `Process.Start` a při zrušení nebo chybě `Kill(entireProcessTree: true)`. Výchozí název programu je na Windows `codex.exe`, jinde `codex`; lze jej přepsat konfigurací. Tato cesta neposkytuje ochranu při násilném ukončení Mentoru ani záruku úklidu potomků, kteří přežili již ukončený kořenový proces. Pro budoucí linuxový hosting je potřeba doplnit správu životnosti pomocí prostředí kontejneru nebo linuxové implementace. Docker image a síťový režim aplikace tato změna nezavádí.
-
-Fronta i stavy žijí v SQLite, ne jen v paměti. Po restartu se importy obnoví a běžící nedokončené rozbory se označí za selhání se zprávou „Rozbor byl přerušen ukončením aplikace. Spusťte nový rozbor.“ Čekající rozbory zůstávají ve frontě. Přerušený rozbor lze spustit znovu tlačítkem „Analyzovat“; poslední úspěšný rozbor i jeho pokrytí zůstávají dostupné. Stejně se zaznamená přerušení při běžném zastavení aplikace. Běh má neměnný snímek zadání a seznam přesných klíčů zahrnutých zpráv; pokrytí se počítá pouze z úspěšných výsledků. Výsledek se zapisuje transakčně. Zámek adresáře zabraňuje dvěma instancím nad stejnou databází. Každý pokus používá nový dočasný běh `--ephemeral`, bez ukládání session Codexu, evidence ID vláken nebo navazování pomocí `resume`.
-
-## Pravidlo pilotu
-
-Zpětnou kompatibilitu řešíme až na výslovný pokyn uživatele. Při změně schématu se pilotní databáze zahodí a založí znovu; aplikace neobsahuje migrační ani legacy větve. Pro čistý start zastavte Mentor a odstraňte jeho adresář `Data` (nebo adresář nastavený v `Mentor__DataDirectory`). Běžný restart data nemaže.
-
-## Ověření
+Strukturu projektu, pravidla fronty a životnost CLI popisuje [architektura](docs/architecture.md). Závazná pravidla organizace kódu a Gitu jsou v [AGENTS.md](AGENTS.md).
 
 ```powershell
 dotnet restore Mentor.slnx --locked-mode
-dotnet build Mentor.slnx --no-restore
-dotnet run --project tests/Mentor.Checks --no-build
+dotnet build Mentor.slnx --no-restore --configuration Release
+dotnet run --project tests/Mentor.Checks --no-build --configuration Release
+dotnet format whitespace Mentor.slnx --no-restore --verify-no-changes
 npm ci
 npm run check:ui
 npm run test:ui
-# Formát C# (nebo formátování bez --verify-no-changes):
-dotnet format whitespace Mentor.slnx --no-restore --verify-no-changes
-# Volitelně ověřit parser na lokálně uloženém skutečném HTML:
-dotnet run --project tests/Mentor.Checks -- C:/cesta/ke/share.html
-# Volitelně ověřit parser na lokálně uloženém JSON veřejné konverzace Codexu:
-dotnet run --project tests/Mentor.Checks -- --codex-share C:/cesta/ke/snapshot.json
 ```
 
-Kontroly pokrývají parser/role, ignorování zdrojových časů, chybějící data, společný rozbor více konverzací podle dne vložení odkazu, přiřazení celého vlákna k jednomu dni, opakovaný rozbor celého dne, neměnnost promptu a pokrytí, duplicity, restart, chyby CLI a shodu skutečného stdin s uloženým promptem. Skutečná konverzace ani osobní databáze nejsou testovací fixture v Gitu.
+`npm run format:ui` upraví formát UI. Backendové kontroly používají dočasné SQLite databáze a testovací CLI; nevolají model. Pokrývají import, denní dávky, souběh, restart, nahrazení rozboru, diskusi, procesy a soukromí telemetrie. CI provádí backendové kontroly na Windows i Linuxu a kontroly UI.
 
-Navíc ověřují izolované business služby, výstup job metrik a traces, anonymitu provozních dat, health checky a směr závislostí mezi vrstvami. Workflow `.github/workflows/ci.yml` provádí build a kontroly na Windows/Linux a ověřuje formát UI. Skript `node scripts/observability-smoke.mjs` otestuje skutečný HTTP host, SQLite, proces a export OTLP s testovacími daty, bez volání modelu; před jeho spuštěním zastavte běžící Mentor. `npm run format:ui` upraví formát UI, `npm run check:ui` jej pouze zkontroluje.
+Pro ověření skutečného HTTP hostu a OTLP při zastaveném Mentoru:
+
+```powershell
+$env:MENTOR_BUILD_CONFIGURATION = 'Release'
+node scripts/observability-smoke.mjs
+```
+
+Parsery lze volitelně ověřit na vlastních lokálních souborech. Osobní konverzace ani databáze nepatří do Gitu:
+
+```powershell
+dotnet run --project tests/Mentor.Checks -- C:/cesta/ke/share.html
+dotnet run --project tests/Mentor.Checks -- --codex-share C:/cesta/ke/snapshot.json
+```

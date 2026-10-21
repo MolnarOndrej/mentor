@@ -8,7 +8,7 @@ Mentor stále běží jen na `127.0.0.1:5178`. Provozní endpointy mají stejné
 | --- | --- |
 | `/health/live` | Host odpovídá. Neověřuje závislosti. |
 | `/health/ready` | Databáze má očekávané tabulky a nastavení, worker je živý a executable Codexu existuje. Při problému HTTP 503. |
-| `/api/operations` | Poslední heartbeat, začátek právě zpracovávané úlohy a počty čekajících, běžících a neúspěšných úloh. |
+| `/api/operations` | Poslední heartbeat, začátek zpracování a počty čekajících, běžících a neúspěšných importů a rozborů. Stavy diskuse jsou v `/api/state`. |
 
 Kontrola Codexu nespouští model ani neověřuje účet. Přihlášení, quota a dostupnost modelu jsou potvrzené až skutečným rozborem. Neúspěšná jednotlivá analýza neznamená automaticky nedostupnost celé aplikace; její chyba je uložená u rozboru a v počítadlech fronty.
 
@@ -44,9 +44,9 @@ Připojte vlastní OTLP backend, například [samostatný Aspire Dashboard](http
 | `mentor.queue.depth` | Počet položek podle `job.kind` a `job.status`; `failed` je počet uložených selhání |
 | `mentor.worker.running` | 0/1 |
 | `mentor.worker.heartbeat.age` | Sekundy od posledního heartbeat |
-| `mentor.import`, `mentor.analysis`, `mentor.codex` | Spany aplikace; Codex je podřízený span denního rozboru |
+| `mentor.import`, `mentor.analysis`, `mentor.answer`, `mentor.codex` | Spany aplikace; Codex je podřízený span rozboru nebo odpovědi |
 
-ID úloh jsou pouze v logu/trace, nikoli v metric labels. U běžící analýzy je delší heartbeat normální; readiness počítá s timeoutem úlohy.
+ID úloh jsou pouze v logu/trace, nikoli v metric labels. Metriky dokončených úloh zahrnují i `job.kind=answer`; gauge hloubky fronty zatím zahrnuje pouze importy a rozbory. U běžící analýzy je delší heartbeat normální; readiness počítá s timeoutem úlohy.
 
 ## Konfigurace a incidenty
 
@@ -61,10 +61,11 @@ Databázi spravuje EF Core přes `EnsureCreated`. Prázdný adresář při start
 
 ## Ověření transportu a provozních stavů
 
-Po Debug sestavení a při zastaveném Mentoru:
+Po sestavení řešení a při zastaveném Mentoru (výchozí konfigurace skriptu je Debug):
 
 ```powershell
+$env:MENTOR_BUILD_CONFIGURATION = 'Release' # odpovídá konfiguraci sestavení
 node scripts/observability-smoke.mjs
 ```
 
-Skript používá oddělenou databázi v `Data/smoke-*`, dvě syntetické konverzace a testovací executable místo modelu. Spustí skutečný web, SQLite frontu a proces CLI, přijme protobuf traces/metriky v lokálním testovacím OTLP přijímači a ověří shodu promptu i nepřítomnost soukromých markerů v telemetrii. Po skončení testovací server zastaví. Původní databázi nepoužije.
+Skript používá oddělenou databázi v `Data/smoke-*`, dvě syntetické konverzace a testovací executable místo modelu. Spustí skutečný web, SQLite frontu a proces CLI, přijme protobuf traces/metriky v lokálním testovacím OTLP přijímači a ověří shodu uloženého promptu se skutečným stdin, diskusi i nepřítomnost soukromých markerů v telemetrii. Po skončení server zastaví a ponechá adresář s diagnostikou. Původní databázi nepoužije.

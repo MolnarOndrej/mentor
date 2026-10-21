@@ -5,6 +5,7 @@ using Mentor.Application.Analyses;
 using Mentor.Application.Dashboard;
 using Mentor.Application.Diagnostics;
 using Mentor.Application.Processing;
+using Mentor.Application.Prompts;
 using Mentor.Checks.Persistence;
 using Mentor.Checks.TestDoubles;
 using Mentor.Hosting;
@@ -60,29 +61,34 @@ internal static class ApplicationChecks
         service.AddConversation(url[..^1] + "2");
         check(await processor.ProcessNextAsync(default) && await processor.ProcessNextAsync(default),
             "application imports through injected provider without HTTP or CLI");
-        var rendered = service.RenderPrompt("2026-10-18", null);
-        var id = service.AnalyzeDay("2026-10-18", rendered.Prompt, rendered.Data);
+        var instructions = repository.Settings().Prompt;
+        var id = service.AnalyzeDay("2026-10-18", instructions);
         try
         {
-            service.AnalyzeDay("2026-10-18", "Different reviewed instructions\n{{data}}", rendered.Data);
-            throw new Exception("Concurrent reviewed prompt was silently ignored.");
+            service.AnalyzeDay("2026-10-18", "Different instructions\n{{data}}");
+            throw new Exception("Concurrent instructions were silently ignored.");
         }
         catch (AnalysisConflictException)
         {
-            check(true, "concurrent different reviewed prompt receives conflict instead of false acceptance");
+            check(repository.Settings().Prompt == instructions, "conflicting analysis does not change saved instructions");
         }
         await processor.ProcessNextAsync(default);
         check(service.GetAnalysis(id)?.Status == "completed" && analyzer.Input?.Conversations.Count == 2,
             "business service and worker produce one daily analysis of N conversations");
-        check(analyzer.Input?.FullPrompt == rendered.Prompt,
-            "layered pipeline preserves exact reviewed prompt");
+        check(analyzer.Input?.Prompt == instructions &&
+            analyzer.Input.FullPrompt == service.GetFullPrompt(id) &&
+            analyzer.Input.FullPrompt == AnalysisPrompt.Build(analyzer.Input with
+            {
+                FullPrompt = null
+            }),
+            "layered pipeline persists exact CLI input using queued instructions and current conversations");
         check(service.GetState().Conversations.Sum(c => c.Days.Sum(d => d.AnalyzedCount)) == 4,
             "read model reports successful message coverage");
 
         service.AddConversation(url[..^1] + "3");
         await processor.ProcessNextAsync(default);
         analyzer.Fail = true;
-        var failedId = service.AnalyzeDay("2026-10-18", null, null);
+        var failedId = service.AnalyzeDay("2026-10-18");
         await processor.ProcessNextAsync(default);
         check(service.GetAnalysis(failedId)?.Status == "failed" && service.GetAnalysis(id)?.Status == "completed",
             "failed provider preserves prior daily report");

@@ -1,10 +1,8 @@
 export class Navigation {
   #page = null;
   #scroll = new Map();
-  #onChange;
 
-  constructor(onChange) {
-    this.#onChange = onChange;
+  constructor() {
     for (const link of document.querySelectorAll('nav a[data-page], #home-link')) {
       link.addEventListener('click', (event) => {
         if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)
@@ -16,10 +14,6 @@ export class Navigation {
     window.addEventListener('popstate', () => this.#render());
     window.addEventListener('hashchange', () => this.#render());
     history.scrollRestoration = 'manual';
-  }
-
-  get page() {
-    return this.#page;
   }
 
   start() {
@@ -53,6 +47,5 @@ export class Navigation {
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
     window.scrollTo(0, this.#scroll.get(page) || 0);
-    this.#onChange(page);
   }
 }

@@ -1,85 +1,61 @@
 # Architektura a údržba Mentoru
 
-## Výsledek rozboru původního kódu
-
-Původní aplikace měla DI kontejner, ale HTTP handlery a worker pracovaly přímo s konkrétním `Store` a importérem. `Program.cs` obsahoval konfiguraci hostu, bezpečnostní middleware, projekci stavů, validaci i příkazy nad databází. `Store` současně určoval pravidla denních dávek. Importér spojoval síťovou komunikaci s parsováním nestabilního HTML; adaptér Codexu spojoval běh procesu s interpretací JSONL. JavaScript měl v jednom souboru komunikaci s API, vykreslování i stav editoru. Provozní diagnostika končila u několika zpráv workeru.
-
-Tato místa jsou nyní oddělená. Rozhraní jsou definovaná podle potřeb konzumentů; neexistuje univerzální repository rozhraní pro všechny endpointy. SQLite implementace sdílí jednu synchronizaci a transakce, protože claim fronty musí atomicky pracovat s konverzacemi, nastavením a rozbory.
-
-## Vrstvy a závislosti
-
-Každý typ má vlastní stejně pojmenovaný soubor a namespace podle složky.
-V Application jsou typy seskupené do `Conversations`, `Analyses`, `Prompts`,
-`Configuration`, `Processing`, `Diagnostics` a `Dashboard`. Infrastructure
-obsahuje implementace importu v `Conversations`, adaptéry CLI v `Analyses`,
-obecný runner a platformní spouštění v `Processes` a databázové
-entity v doménových podsložkách `Persistence`. HTTP požadavky jsou oddělené
-pod `Endpoints` podle příslušné domény, health checky pod
-`Observability/HealthChecks`. Testovací dvojníci mají samostatné soubory v
-`TestDoubles`.
+## Vrstvy a odpovědnosti
 
 ```text
 Mentor (HTTP, UI, host, monitoring)
   ├─ Mentor.Application (pravidla, případy použití, modely, rozhraní)
-  └─ Mentor.Infrastructure (SQLite, ChatGPT HTTP/parser, Codex proces/JSONL)
+  └─ Mentor.Infrastructure (SQLite, import, CLI)
        └─ Mentor.Application
 ```
 
-`Application` neodkazuje na ASP.NET Core, SQLite ani Infrastructure; kontrola závislostí je součástí testů. Samostatný Domain projekt zatím nepřináší užitek: model je malý a neobsahuje rozsáhlé doménové agregáty. UI zná pouze JSON kontrakt endpointů. Infrastructure je ve webovém projektu dostupná pro composition root a provozní integraci.
+Application neodkazuje na ASP.NET Core, SQLite ani Infrastructure; testy ověřují směr závislostí. Každý typ má vlastní stejně pojmenovaný soubor a namespace odpovídá složce. Soubory se seskupují podle domény; testovací dvojníci jsou v `TestDoubles`.
 
-| Část | Odpovědnost |
+| Oblast | Odpovědnost |
 | --- | --- |
-| `MentorService` | Případy použití, validace vstupů, čtecí model pro UI |
-| `DailyAnalysisPolicy`, `DailySchedule` | Den podle systémového časového pásma, výběr zpráv a jejich stabilní klíče |
-| `AnalysisPrompt` | Dosazení dat do DB šablony; žádný skrytý text instrukcí |
-| `WorkProcessor` | Jedna testovatelná iterace zpracování s injektovanými poskytovateli |
-| `MentorDbContext` | EF Core model, mapování tabulek a JSON kolekcí |
-| `EfMentorRepository` | LINQ, trvalá fronta, atomické claimy a neměnné snímky |
-| `ChatGptImporter`, `ChatGptShareParser` | Odděleně přenos HTTP a čtení obsahu |
-| `CodexCliAnalyzer`, `CodexResponseParser` | Argumenty, pravidla Codexu a kontrola výsledku protokolu |
-| `ICliProcessRunner`, `CliProcessRunner` | Obecné spuštění CLI, UTF-8 I/O, exit kód, timeout, limity a zrušení |
-| `WindowsCliProcessLauncher`, `PortableCliProcessLauncher` | Windows job pro každý běh; mimo Windows spuštění přes .NET Process |
-| `MentorWorker` | Životní cyklus BackgroundService, interval a shutdown |
-| `MentorEndpoints` | Pouze mapování HTTP na business službu |
-| `LocalAccessMiddleware`, `ApiErrorMiddleware` | Lokální přístup a jednotné chyby s trace ID |
-| `api.js`, `dom.js`, `prompt-editor.js`, `app.js` | HTTP klient, bezpečné DOM, editor a řízení stránky |
+| `Dashboard/MentorService` | Příkazy UI a čtecí model, pokrytí zpráv a detekce změn podkladů |
+| `Analyses/DailyAnalysisPolicy`, `DailySchedule` | Výběr celých konverzací podle dne vložení, klíče zpráv a plánování |
+| `Prompts/AnalysisPrompt`, `DiscussionPrompt` | Sestavení vstupu rozboru a diskuse, validace šablony a limitu diskuse |
+| `Conversations/ConversationRefresher` | Obnovení dnešních zdrojů s ponecháním dat při nedostupnosti |
+| `Processing/WorkProcessor` | Jedna iterace plánování a zpracování importu, odpovědi nebo rozboru |
+| `Persistence/MentorDbContext`, `EfMentorRepository` | EF mapování, transakce, trvalá fronta a obnova přerušených úloh |
+| `Conversations/ChatGptImporter`, `ChatGptShareParser`, `CodexShareParser` v Infrastructure | HTTP přenos oddělený od parsování jednotlivých formátů |
+| `Analyses/CodexCliAnalyzer`, `CodexResponseParser` | Konfigurace Codexu a validace jeho JSONL výsledku |
+| `Processes/ICliProcessRunner`, `CliProcessRunner` | Obecné CLI bez znalosti poskytovatele: UTF-8 I/O, timeout, limity a rušení |
+| `Hosting/MentorWorker` | Smyčka background služby, DI scope, pollování a shutdown |
+| `Endpoints` | HTTP mapování rozdělené na konverzace, rozbory, diskusi a prompt |
+| `Middleware`, `Observability` | Lokální přístup, jednotné chyby, health checky a telemetrie |
 
-DI kontroluje scope i úplnost registrací při startu. Repository, zámek pracovního adresáře, telemetrie a adaptér CLI jsou singletony; business služby a `HttpClient` importér vznikají ve scope požadavku nebo iterace workeru. Worker vytváří nový scope pro každou iteraci, takže nedrží typed HTTP klienta po celou dobu života aplikace. `TimeProvider` dovoluje testovat čas bez čekání.
+UI má moduly pro API a bezpečné DOM, navigaci, automatické ukládání, editory, archiv a diskusi. `app.js` je propojuje a řídí obnovování stránky. Formátovaný text se vykresluje přes DOM, nikoli jako důvěryhodné HTML z modelu.
 
-## Databázový přístup
+## Persistence a životnost služeb
 
-Persistence používá Entity Framework Core 10 se SQLite providerem. Veškeré čtení a zápisy procházejí přes `MentorDbContext`, LINQ a `SaveChanges`; aplikace nesestavuje SQL ani nepoužívá přímé SQLite příkazy. Unikátní index chrání URL proti duplicitám. Zprávy a klíče snímků se ukládají jako JSON kolekce s EF konvertorem a porovnáváním hodnot.
+DI při startu kontroluje scope a registrace. Repository, workspace lease, telemetrie a CLI adaptér jsou singletony. Business služby a typed HTTP importér vznikají ve scope požadavku nebo jedné iterace workeru. `TimeProvider` umožňuje testovat plánování bez čekání.
 
-DI registruje `IDbContextFactory<MentorDbContext>`. Repository je singleton kvůli společnému zámku fronty, ale **DbContext se nesdílí**: každá operace jej vytvoří a dispose uvolní. Čtecí dotazy používají `AsNoTracking`; zápisy a převzetí úloh mají explicitní transakci. Konflikt při kontrole promptu vrátí zpět i případnou úpravu nastavení. Inicializace používá `EnsureCreated`, bez migrací a podpory starších schémat podle pravidel pilotu. Testy používají skutečný SQLite provider nad dočasnými soubory.
+Repository implementuje rozhraní podle potřeb konzumentů a sdílí jeden zámek, aby atomické operace zasahující konverzace, nastavení, rozbory a diskusi nemohly soupeřit. `IDbContextFactory<MentorDbContext>` vytváří nový kontext pro každou operaci; DbContext se mezi požadavky nesdílí. Čtení používá `AsNoTracking`, zápisy explicitní transakci. Testy pracují se skutečným SQLite providerem v dočasných souborech.
 
-Životnost kontextů odpovídá [doporučení EF Core](https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/#use-a-dbcontext-factory). Citlivé hodnoty parametrů se nelogují a informační SQL logy jsou potlačené.
+Unikátní index chrání normalizované URL. Zprávy a klíče snímků jsou JSON kolekce s EF konvertorem a porovnáváním hodnot. Diskuse má unikátní pořadí v rozboru a kaskádové odstranění přes cizí klíč. Inicializace používá `EnsureCreated`; pravidlo pilotu nepovoluje automatické migrace. Zámek adresáře brání dvěma instancím nad jednou databází.
 
-## Zachované invarianty
+## Průchod úlohy a invarianty
 
-Diskuse je volitelná a patří právě jednomu aktuálnímu dokončenému rozboru. `discussion_turns` ukládá otázku, odpověď, pořadí, stav, chybu a časy; unikátní index chrání pořadí v rozboru a cizí klíč s kaskádou zajišťuje transakční odstranění při nahrazení. Společný zámek a transakce rezervují celý den už při zařazení rozboru nebo odpovědi. Odpověď dostává uložený `FullPrompt`, nikoli nově sestavené podklady. `DiscussionPrompt` přidá výsledek, dokončenou historii a novou otázku a kontroluje celkový limit 240 000 znaků před zápisem úlohy. `IDiscussionResponder` používá stejný CLI runner, izolaci, timeout i úklid procesů jako rozbory. Worker zapisuje přerušení odpovědi při shutdownu; inicializace repository totéž provede pro zbylé běžící odpovědi po násilném ukončení. Čekající odpovědi se zachovají. Čtecí endpoint diskuse ani vykreslení UI nevytvářejí úlohu.
+1. Zařazení rozboru rezervuje den, ověří dostupnost zpráv a uloží neměnné instrukce. Souběžný ruční požadavek na rozbor nebo odpověď stejného dne dostane HTTP 409. Odmítnutí požadavku vrátí zpět i případnou změnu instrukcí.
+2. Worker obslouží import, poté odpověď, poté rozbor. Rozbor počká na dokončení importů. Při převzetí vytvoří snímek aktuálních zpráv a přesný úplný prompt. U dnešního dne ještě obnoví zdroje a přepíše snímek skutečně použitým vstupem. Archiv používá uložené konverzace.
+3. Úspěch rozboru uloží výsledek, klíče pokrytí a odstraní předchozí výsledek včetně jeho diskuse v jedné transakci. Selhání uchová poslední úspěšný výsledek a pouze poslední neúspěšný pokus. Opakování vždy analyzuje celý den.
+4. Odpověď vychází z přesného uloženého promptu dokončeného rozboru, jeho výsledku, dokončené historie a otázky. Celkový limit se kontroluje před zařazením. Chyba uchová otázku a předchozí diskusi; další otázka počká na zopakování neúspěšné odpovědi.
+5. Čekající úlohy přežijí restart. Rozpracovaný import se vrátí do fronty; rozpracovaný rozbor a odpověď se označí za přerušené selhání. Při běžném shutdownu se přerušení generování zapíše také. Pozdní výsledek po zrušení se nepřijme.
 
-- Jeden den spojuje N celých konverzací podle dne vložení odkazu v systémovém časovém pásmu. Časy jednotlivých zpráv se neukládají ani nepoužívají.
-- Úprava promptu neovlivní rozpracované ani historické běhy.
-- Opakované spuštění nevyžaduje změny konverzací. Backend ověřuje dostupnost zpráv a odmítá souběžný rozbor stejného dne.
-- Původní rozbor zůstává dostupný až do transakčního uložení ověřeného výsledku a odstranění předchozího rozboru. Historie nahrazených rozborů se neuchovává; chyba posledního pokusu je samostatná.
-- Selhání nerozšíří úspěšné pokrytí a nesmaže předchozí výsledek.
-- CLI má read-only sandbox, vypnuté akční nástroje a omezenou dobu běhu.
-- Pilot nemá migrace ani legacy větve. Běžný restart zachovává data.
+Klíč pokrytí zprávy tvoří ID konverzace a pořadové číslo zprávy. Změnu textu se stejným číslem zachytí porovnání nově sestaveného promptu s posledním úspěšným vstupem. Úprava instrukcí neovlivní již zařazené úlohy ani historický výsledek. Backend nepodporuje starý režim editoru celého promptu s vloženým JSONem; UI ukládá šablonu a data doplňuje až zpracování fronty.
 
-## Co záměrně zatím nepřidáváme
+## Izolace CLI
 
-Více samostatných procesů, CQRS/MediatR, message broker ani obecné CRUD repository nyní nepřidáváme. Další rozdělení persistence má smysl, až se jednotlivé části začnou měnit nezávisle nebo bude potřeba více procesů.
+`CodexCliAnalyzer` používá nový `--ephemeral` běh s read-only sandboxem, bez osobní konfigurace a projektových instrukcí, se zakázaným shellem, patchem, webem a pluginy. Importovaný obsah je v zadání nedůvěryhodnými daty. Úspěch vyžaduje nulový exit kód, `turn.completed` a neprázdnou finální odpověď; akční nástroj ve výstupu je chyba. Runner omezuje vstup/výstup i dobu běhu a spouští proces bez shellu a viditelného okna.
 
-## Další praktiky podle skutečné potřeby
+Na Windows `WindowsCliProcessLauncher` vytváří pro každý běh vlastní Job Object s `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. `CreateProcessW` s `PROC_THREAD_ATTRIBUTE_JOB_LIST` zařadí proces do jobu už při vytvoření; potomci členství dědí. Zrušení, timeout, limit výstupu, dokončení kořenového procesu i násilné ukončení Mentoru uklidí potomky daného běhu. Jiné běhy se neovlivní.
 
-| Priorita / spouštěč | Praktika nebo technologie | Přínos |
-| --- | --- | --- |
-| Chci procházet traces a metriky graficky | Samostatný Aspire Dashboard nebo OTel Collector + Grafana | Existující OTLP export se připojí bez změny business kódu. |
-| Roste počet testovacích scénářů | xUnit a `WebApplicationFactory` nad stávajícími testovacími porty | Samostatné případy, standardní reporty a izolované HTTP testy; současný CLI test executable může zůstat jako fixture. |
-| Archiv zpomaluje načtení | Stránkované EF Core dotazy a serverové seskupení | Nejprve omezit načítání všech textů, měřit latenci a paměť. |
-| Síťové importy často selhávají přechodně | `Microsoft.Extensions.Http.Resilience` s omezeným retry jen pro čtecí HTTP | Odolnější import bez nekonečné fronty. Analýzu přes CLI automaticky neopakovat kvůli nákladům a nejistému dokončení. |
-| Aplikace má běžet i bez otevřeného terminálu | Windows Service / spravované spuštění při startu systému | Spolehlivé plánování při běžícím PC; CLI musí být přihlášené pod účtem služby. |
-| Více uživatelů nebo hostů | Autentizace, autorizace, PostgreSQL provider EF Core | Teprve potom řešit souběh více instancí a na explicitní pokyn i migrace dat. |
-| Worker se oddělí od webu | Trvalý W3C trace context ve frontě a externí scheduler | Návaznost trace přes procesy a nezávislý provoz workeru. Nyní slouží pro vazbu HTTP a úloh ID rozboru. |
+Mimo Windows `PortableCliProcessLauncher` používá `Process.Start` a při chybě nebo zrušení `Kill(entireProcessTree: true)`. Tato cesta nezaručuje úklid při násilném ukončení hostu ani potomků, kteří přežili kořenový proces. Nasazení na Linuxu by vyžadovalo správu životnosti hostitelským prostředím nebo další platformní implementaci.
 
-Podkladem je [doporučení Microsoftu k aplikačním vrstvám](https://learn.microsoft.com/en-us/dotnet/standard/modern-web-apps-azure-architecture/common-web-application-architectures) a [observabilitě .NET přes OpenTelemetry](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel). Vrstvení je přizpůsobené velikosti tohoto pilotu.
+## Pravidla dalších změn
+
+Zachovejte transakční rezervaci dne, nahrazení výsledku a mazání diskuse. Sdílený zámek persistence nerozdělujte bez náhrady těchto záruk. Nové importní formáty oddělte od HTTP přenosu a ověřte role i odmítnutí neúplného obsahu. Změny CLI ověřujte přes testovací proces včetně rušení a životnosti potomků.
+
+Před commitem spusťte kontroly uvedené v [README](../README.md); provozní ověření a známé limity diagnostiky jsou v [operations.md](operations.md). Další infrastrukturu přidávejte až podle konkrétní potřeby. Aktuální model počítá s jedním uživatelem, jedním hostem a jednou frontou.
