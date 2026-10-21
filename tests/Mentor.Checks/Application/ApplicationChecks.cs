@@ -54,12 +54,12 @@ internal static class ApplicationChecks
         meter.Start();
         using var telemetry = new MentorTelemetry();
         var service = new MentorService(repository, repository, repository, repository, importer, clock, new ConversationRefresher(repository, importer, clock));
-        var processor = new WorkProcessor(repository, repository, importer, analyzer, clock, telemetry, logger, new ConversationRefresher(repository, importer, clock));
+        var processor = new WorkProcessor(repository, importer, analyzer, clock, telemetry, logger, new ConversationRefresher(repository, importer, clock));
 
         const string url = "https://chatgpt.com/share/6ad4ab23-61e0-83eb-8533-14def95d3491";
         service.AddConversation(url);
         service.AddConversation(url[..^1] + "2");
-        check(await processor.ProcessNextAsync(default) && await processor.ProcessNextAsync(default),
+        check(await processor.ProcessNextAsync(repository.Settings(), default) && await processor.ProcessNextAsync(repository.Settings(), default),
             "application imports through injected provider without HTTP or CLI");
         var instructions = repository.Settings().Prompt;
         var id = service.AnalyzeDay("2026-10-18", instructions);
@@ -72,7 +72,7 @@ internal static class ApplicationChecks
         {
             check(repository.Settings().Prompt == instructions, "conflicting analysis does not change saved instructions");
         }
-        await processor.ProcessNextAsync(default);
+        await processor.ProcessNextAsync(repository.Settings(), default);
         check(service.GetAnalysis(id)?.Status == "completed" && analyzer.Input?.Conversations.Count == 2,
             "business service and worker produce one daily analysis of N conversations");
         check(analyzer.Input?.Prompt == instructions &&
@@ -86,10 +86,10 @@ internal static class ApplicationChecks
             "read model reports successful message coverage");
 
         service.AddConversation(url[..^1] + "3");
-        await processor.ProcessNextAsync(default);
+        await processor.ProcessNextAsync(repository.Settings(), default);
         analyzer.Fail = true;
         var failedId = service.AnalyzeDay("2026-10-18");
-        await processor.ProcessNextAsync(default);
+        await processor.ProcessNextAsync(repository.Settings(), default);
         check(service.GetAnalysis(failedId)?.Status == "failed" && service.GetAnalysis(id)?.Status == "completed",
             "failed provider preserves prior daily report");
         check(service.GetState().Conversations.Sum(c => c.Days.Sum(d => d.MessageCount - d.AnalyzedCount)) == 2,

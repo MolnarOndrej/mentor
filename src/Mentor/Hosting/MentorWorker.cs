@@ -9,20 +9,21 @@ public sealed class MentorWorker(IServiceScopeFactory scopeFactory, WorkerStatus
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         status.Start();
+        var pollSeconds = new RuntimeSettings().PollIntervalSeconds;
         try
         {
             while (!stoppingToken.IsCancellationRequested)
             {
                 status.Heartbeat();
                 var started = clock.GetTimestamp();
-                var pollSeconds = new RuntimeSettings().PollIntervalSeconds;
                 try
                 {
-                    pollSeconds = settings.Settings().Runtime.PollIntervalSeconds;
+                    var current = settings.Settings();
+                    pollSeconds = current.Runtime.PollIntervalSeconds;
                     await using var scope = scopeFactory.CreateAsyncScope();
                     var processor = scope.ServiceProvider.GetRequiredService<WorkProcessor>();
                     status.BeginJob();
-                    var processed = await processor.ProcessNextAsync(stoppingToken);
+                    var processed = await processor.ProcessNextAsync(current, stoppingToken);
                     status.EndJob();
                     if (processed)
                         continue;

@@ -19,19 +19,19 @@ internal static class RefreshChecks
         var service = new MentorService(repository, repository, repository, repository, importer, clock, refresher);
         var analyzer = new TestAnalyzer();
         using var telemetry = new MentorTelemetry();
-        var processor = new WorkProcessor(repository, repository, importer, analyzer, clock, telemetry, new TestLogger(), refresher);
+        var processor = new WorkProcessor(repository, importer, analyzer, clock, telemetry, new TestLogger(), refresher);
         const string url = "https://chatgpt.com/share/6ad4ab23-61e0-83eb-8533-14def95d3491";
         var first = service.AddConversation(url).Id;
         var secondUrl = url[..^1] + "2";
         var second = service.AddConversation(secondUrl).Id;
-        await processor.ProcessNextAsync(default);
-        await processor.ProcessNextAsync(default);
+        await processor.ProcessNextAsync(repository.Settings(), default);
+        await processor.ProcessNextAsync(repository.Settings(), default);
         var before = repository.FindConversation(first)!;
         var analysis = service.AnalyzeDay("2026-10-18");
         importer.Data = new("Updated title", [new("user", "New content", 1), new("assistant", "New answer", 2), new("user", "More", 3)]);
         importer.UnavailableUrls.Add(secondUrl);
         importer.Calls.Clear();
-        await processor.ProcessNextAsync(default);
+        await processor.ProcessNextAsync(repository.Settings(), default);
         check(importer.Calls.Order().SequenceEqual(new[] { url, secondUrl }.Order()), "today's analysis refreshes all saved links");
         check(analyzer.Input!.Conversations.Single(c => c.Id == first).Messages.Count == 3 &&
             analyzer.Input.Conversations.Single(c => c.Id == second).Messages.Count == 2,
@@ -76,7 +76,7 @@ internal static class RefreshChecks
         check(!repository.DeleteToday(second) && !repository.RefreshToday(second, importer.Data),
             "persistence rejects modification of archived conversations");
         service.AnalyzeDay("2026-10-18");
-        await processor.ProcessNextAsync(default);
+        await processor.ProcessNextAsync(repository.Settings(), default);
         check(importer.Calls.Count == 0, "archived analysis never reloads source links");
     }
 }

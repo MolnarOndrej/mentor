@@ -49,21 +49,21 @@ internal static class RuntimeSettingsChecks
             "runtime settings and prompt survive repository restart independently");
 
         using var telemetry = new MentorTelemetry();
-        var processor = new WorkProcessor(repository, repository, new TestImporter(), new TestAnalyzer(),
+        var processor = new WorkProcessor(repository, new TestImporter(), new TestAnalyzer(),
             clock, telemetry, new TestLogger(), new ConversationRefresher(repository, new TestImporter(), clock));
-        check(!await processor.ProcessNextAsync(default), "worker waits until configured analysis minute");
+        check(!await processor.ProcessNextAsync(repository.Settings(), default), "worker waits until configured analysis minute");
         clock.Advance(TimeSpan.FromSeconds(1));
-        check(!await processor.ProcessNextAsync(default) && repository.Settings().LastDailyDate == "2026-07-01",
+        check(!await processor.ProcessNextAsync(repository.Settings(), default) && repository.Settings().LastDailyDate == "2026-07-01",
             "worker checks configured time and skips an empty daily analysis");
         repository.SaveRuntimeSettings(new(1, "20:16"));
         clock.Advance(TimeSpan.FromMinutes(1));
-        check(!await processor.ProcessNextAsync(default) && repository.Analyses().Count == 0,
+        check(!await processor.ProcessNextAsync(repository.Settings(), default) && repository.Analyses().Count == 0,
             "changing schedule does not repeat an already completed daily analysis");
         clock.Advance(TimeSpan.FromDays(1));
         repository.SaveRuntimeSettings(new(1, "20:17"));
-        check(!await processor.ProcessNextAsync(default), "worker uses updated schedule without restart");
+        check(!await processor.ProcessNextAsync(repository.Settings(), default), "worker uses updated schedule without restart");
         clock.Advance(TimeSpan.FromMinutes(1));
-        check(!await processor.ProcessNextAsync(default) && repository.Settings().LastDailyDate == "2026-07-02", "updated analysis time takes effect the next day");
+        check(!await processor.ProcessNextAsync(repository.Settings(), default) && repository.Settings().LastDailyDate == "2026-07-02", "updated analysis time takes effect the next day");
         check(DailySchedule.DueDate(LocalTime.At("2026-12-01T20:14:59"), null, "20:15") == null &&
             DailySchedule.DueDate(LocalTime.At("2026-12-01T20:15:00"), null, "20:15") == "2026-12-01" &&
             DailySchedule.DueDate(LocalTime.At("2026-12-02T00:00:00"), null, "00:00") == "2026-12-02",

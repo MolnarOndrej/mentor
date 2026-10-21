@@ -11,7 +11,6 @@ namespace Mentor.Application.Processing;
 // One iteration is independently testable; scheduling the loop belongs to the host.
 public sealed class WorkProcessor(
     IWorkQueue queue,
-    ISettingsRepository settings,
     IConversationImporter importer,
     IConversationAnalyzer analyzer,
     TimeProvider clock,
@@ -20,9 +19,8 @@ public sealed class WorkProcessor(
     ConversationRefresher refresher,
     IDiscussionResponder? responder = null)
 {
-    public async Task<bool> ProcessNextAsync(CancellationToken cancellationToken)
+    public async Task<bool> ProcessNextAsync(Settings current, CancellationToken cancellationToken)
     {
-        var current = settings.Settings();
         var due = DailySchedule.DueDate(clock.GetUtcNow(), current.LastDailyDate, current.Runtime.DailyTime);
         if (due != null)
             queue.EnqueueAnalysis("daily", due);

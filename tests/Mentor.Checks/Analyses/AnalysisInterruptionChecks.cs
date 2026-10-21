@@ -25,11 +25,11 @@ internal static class AnalysisInterruptionChecks
         using var stopping = new CancellationTokenSource();
         using var telemetry = new MentorTelemetry();
         var importer = new TestImporter();
-        var processor = new WorkProcessor(repository, repository, importer, new CancellingAnalyzer(stopping),
+        var processor = new WorkProcessor(repository, importer, new CancellingAnalyzer(stopping),
             clock, telemetry, new TestLogger(), new ConversationRefresher(repository, importer, clock));
         try
         {
-            await processor.ProcessNextAsync(stopping.Token);
+            await processor.ProcessNextAsync(repository.Settings(), stopping.Token);
             throw new Exception("Shutdown cancellation ignored");
         }
         catch (OperationCanceledException) when (stopping.IsCancellationRequested) { }

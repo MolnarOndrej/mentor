@@ -63,11 +63,11 @@ internal static class DiscussionChecks
         using var telemetry = new MentorTelemetry();
         var importer = new TestImporter();
         var processorClock = new TestClock(LocalTime.At("2026-10-19T12:00:00"));
-        var processor = new WorkProcessor(repository, repository, importer, new TestAnalyzer(), processorClock,
+        var processor = new WorkProcessor(repository, importer, new TestAnalyzer(), processorClock,
             telemetry, new TestLogger(), new ConversationRefresher(repository, importer, processorClock), new CancellingResponder(stopping));
         try
         {
-            await processor.ProcessNextAsync(stopping.Token);
+            await processor.ProcessNextAsync(repository.Settings(), stopping.Token);
             throw new Exception("Cancellation ignored");
         }
         catch (OperationCanceledException) when (stopping.IsCancellationRequested) { }
@@ -83,9 +83,9 @@ internal static class DiscussionChecks
         Environment.SetEnvironmentVariable("MENTOR_CAPTURE_FILE", capture);
         try
         {
-            processor = new WorkProcessor(repository, repository, importer, new TestAnalyzer(), processorClock,
+            processor = new WorkProcessor(repository, importer, new TestAnalyzer(), processorClock,
                 telemetry, new TestLogger(), new ConversationRefresher(repository, importer, processorClock), responder);
-            await processor.ProcessNextAsync(default);
+            await processor.ProcessNextAsync(repository.Settings(), default);
             check(repository.Discussion(report)[1] is { Status: "completed", Answer: "Testovací rozbor" } &&
                 File.ReadAllText(capture).Contains("First answer", StringComparison.Ordinal), "worker runs independent CLI answer with complete discussion context");
         }
