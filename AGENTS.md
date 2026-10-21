@@ -14,6 +14,11 @@ Soubory seskupujte podle domény nebo funkce (například Conversations, Analyse
 Prompts, Configuration, Processing, Diagnostics), ne do společných souborů
 Models.cs nebo Ports.cs. Namespace odpovídá projektu a složce.
 
+Při přejmenování zachovejte jednotné názvosloví souvisejících prvků. Vyhledejte
+stejné i podobné názvy v celém projektu a upravte všechny související výskyty,
+včetně názvů souborů a typů, proměnných, HTML ID, atributů aria-labelledby,
+selektorů, importů a testů. Odkazy musí odpovídat přejmenovaným cílům.
+
 # Git workflow
 
 Změny integrujte do `master` pomocí squash a přímého push bez PR, i když ochrana

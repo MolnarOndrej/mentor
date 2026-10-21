@@ -94,10 +94,10 @@ for (const id of [
   'prompt',
   'prompt-form',
   'prompt-error',
-  'runtime-settings-form',
+  'settings-form',
   'poll-interval',
   'daily-time',
-  'runtime-settings-error',
+  'settings-error',
 ]) {
   elements.set(id, {
     value: '',
@@ -156,13 +156,13 @@ assert.equal(elements.get('prompt').disabled, false);
 editor.initialize('Before\n{{data}}\nAfter');
 assert.equal(elements.get('prompt').value, 'Before\n\nAfter');
 
-const { RuntimeSettingsEditor } = await import('../src/Mentor/wwwroot/runtime-settings-editor.js');
+const { SettingsEditor } = await import('../src/Mentor/wwwroot/settings-editor.js');
 let settings;
-const settingsEditor = new RuntimeSettingsEditor((saved) => {
+const settingsEditor = new SettingsEditor((saved) => {
   settings = saved;
 });
 settingsEditor.initialize({ pollIntervalSeconds: 5, dailyTime: '22:00' });
-const form = elements.get('runtime-settings-form');
+const form = elements.get('settings-form');
 elements.get('poll-interval').value = '10';
 form.oninput();
 await tick();
@@ -173,10 +173,10 @@ const count = requests.length;
 form.oninput();
 await tick();
 assert.equal(requests.length, count);
-assert.match(elements.get('runtime-settings-error').textContent, /platný interval/);
+assert.match(elements.get('settings-error').textContent, /platný interval/);
 form.valid = true;
 elements.get('daily-time').value = '21:30';
 await form.focusout();
 assert.equal(settings.dailyTime, '21:30');
-assert.equal(elements.get('runtime-settings-error').textContent, '');
+assert.equal(elements.get('settings-error').textContent, '');
 console.log('Editor integration checks passed.');

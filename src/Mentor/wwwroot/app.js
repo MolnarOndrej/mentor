@@ -3,7 +3,7 @@ import { $, date, dayLabel, el, formatted } from './dom.js';
 import { PromptEditor } from './prompt-editor.js';
 import { analysisControl } from './analysis-control.js';
 import { Navigation } from './navigation.js';
-import { RuntimeSettingsEditor } from './runtime-settings-editor.js';
+import { SettingsEditor } from './settings-editor.js';
 import { ArchiveCalendar } from './archive-calendar.js';
 import { DiscussionView } from './discussion.js';
 const labels = {
@@ -44,7 +44,7 @@ let updatingConversations = false;
 let requestingAnalysis = false;
 let openConversation = null;
 const promptEditor = new PromptEditor();
-const runtimeSettingsEditor = new RuntimeSettingsEditor((saved) => {
+const settingsEditor = new SettingsEditor((saved) => {
   state.settings.runtime = saved;
   configurePolling(saved.pollIntervalSeconds);
 });
@@ -278,7 +278,7 @@ async function refresh(force = false) {
     const next = await api('state');
     if (!initialized) {
       promptEditor.initialize(next.settings.prompt);
-      runtimeSettingsEditor.initialize(next.settings.runtime);
+      settingsEditor.initialize(next.settings.runtime);
       initialized = true;
     }
     state = next;

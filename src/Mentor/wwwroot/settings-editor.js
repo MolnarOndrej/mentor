@@ -2,11 +2,11 @@ import { api } from './api.js';
 import { $ } from './dom.js';
 import { AutoSave } from './auto-save.js';
 
-export class RuntimeSettingsEditor {
+export class SettingsEditor {
   #save;
 
   constructor(onSaved) {
-    const form = $('runtime-settings-form');
+    const form = $('settings-form');
     this.#save = new AutoSave(
       () => ({
         pollIntervalSeconds: Number($('poll-interval').value),
@@ -17,7 +17,7 @@ export class RuntimeSettingsEditor {
         onSaved(await api('settings', 'PUT', value));
       },
       (message) => {
-        $('runtime-settings-error').textContent = message;
+        $('settings-error').textContent = message;
       }
     );
     form.oninput = () => this.#save.schedule();
