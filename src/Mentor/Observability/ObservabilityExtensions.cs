@@ -24,6 +24,7 @@ public static class ObservabilityExtensions
                 .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
                 .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Fatal)
+                .MinimumLevel.Override("ModelContextProtocol", LogEventLevel.Fatal)
                 .Enrich.FromLogContext()
                 .WriteTo.Console(new RenderedCompactJsonFormatter())
                 .WriteTo.File(new RenderedCompactJsonFormatter(), Path.Combine(options.DataDirectory, "logs", "mentor-.jsonl"),

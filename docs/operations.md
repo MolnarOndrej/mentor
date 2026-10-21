@@ -4,6 +4,11 @@ Mentor stále běží jen na `127.0.0.1:5178`. Provozní endpointy mají stejné
 
 ## Rychlá kontrola
 
+Lokální MCP `/mcp` je bez tokenu vypnuté. Aktivaci přes `Mentor__Mcp__Token`,
+rotaci tokenu, přístupová pravidla a kontrakt nástroje popisuje [MCP návod](mcp.md).
+MCP ani UI nevystavujte veřejně. Tato verze mění schéma pilotní DB; před prvním
+startem odložte nebo odstraňte starou `Data`, běžné další restarty data zachovávají.
+
 | Adresa | Význam |
 | --- | --- |
 | `/health/live` | Host odpovídá. Neověřuje závislosti. |

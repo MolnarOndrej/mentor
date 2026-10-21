@@ -1,6 +1,6 @@
 # Mentor
 
-Osobní AI kouč v češtině. ASP.NET Core 10, HTML/JavaScript, SQLite přes Entity Framework Core a jedna trvalá fronta úloh. Aplikace nemá přihlášení a běží pouze na `http://127.0.0.1:5178`.
+Osobní AI kouč v češtině. ASP.NET Core 10, HTML/JavaScript, SQLite přes Entity Framework Core a jedna trvalá fronta úloh. Webové UI nemá přihlášení a běží pouze na `http://127.0.0.1:5178`; volitelný MCP příjem vyžaduje token.
 
 ## Spuštění na Windows
 
@@ -24,13 +24,23 @@ Otevřete http://127.0.0.1:5178. Alternativně spusťte `dotnet run --project sr
 
 Dnešní odkazy lze obnovit jednotlivě nebo hromadně. Před dnešním rozborem se obnoví automaticky. Nedostupný odkaz ponechá poslední uloženou kopii a zobrazí příčinu. U Codexu se ověřuje také veřejná stránka, protože datový endpoint může držet starý snímek. Archivované odkazy se neobnovují. Smazání dnešní konverzace vyžaduje potvrzení.
 
-Duplicitní odkaz po normalizaci URL nevytvoří další záznam ani nepřepíše uložený obsah. Neúspěšný import lze opakovat. Import zahrnuje pouze text uživatele a viditelné odpovědi AI s pořadovými čísly pro citace; vynechává interní myšlenky, průběžné komentáře a výstupy nástrojů. Claude a další zdroje nejsou podporované. Importní formáty ChatGPT/Codexu nejsou stabilní veřejné API; neočekávaný formát skončí chybou.
+Duplicitní odkaz po normalizaci URL nevytvoří další záznam ani nepřepíše uložený obsah. Neúspěšný import lze opakovat. Import Share odkazů zahrnuje pouze text uživatele a viditelné odpovědi AI s pořadovými čísly pro citace; vynechává interní myšlenky, průběžné komentáře a výstupy nástrojů. Share odkazy Claude a dalších zdrojů nejsou podporované. Importní formáty ChatGPT/Codexu nejsou stabilní veřejné API; neočekávaný formát skončí chybou.
 
 Opakovaný rozbor zahrne celý den a vyžaduje potvrzení nahrazení. Předchozí úspěšný výsledek zůstává čitelný i při selhání nového pokusu. Úspěšné dokončení jej nahradí a odstraní jeho diskusi v jedné transakci; historie nahrazených výsledků se neuchovává. Pro jeden den může čekat nebo běžet jen jeden rozbor či odpověď. Den bez analyzovatelných zpráv rozbor nespustí.
 
 Navigace zachovává rozepsané formuláře a podporuje historii i obnovení stránky. Nastavení zahrnuje interval pollování 1–3600 sekund (výchozí 5) a čas denního rozboru. Změny se projeví bez restartu a zůstávají v databázi.
 
 ## Data a limity
+
+Asistent může předat konverzaci přes lokální MCP bez veřejného Share odkazu.
+Nástroj `mentor_upsert_conversation` ukládá nebo nahrazuje snímek podle zdroje a
+stabilního ID s výslovným rozlišením přepisu a souhrnu. Volitelná URL se nestahuje.
+Den určuje první přijetí Mentorem; opakované předání jej zachová. MCP je standardně
+vypnuté, aktivuje se tokenem `Mentor__Mcp__Token`. Konfigurace a schéma jsou
+v [kontraktu MCP](docs/mcp.md).
+
+**Tato verze mění schéma databáze.** Před prvním spuštěním zastavte Mentor a odložte
+nebo odstraňte pilotní `Data`; automatická migrace není součástí změny.
 
 Databáze je v `src/Mentor/Data/mentor.db`, za běhu mohou existovat i soubory WAL/SHM. Data nejsou aplikací šifrovaná. Pro zálohu Mentor zastavte a zkopírujte celý adresář `Data`. Smazání zdrojového sdílení neodstraní kopii v Mentoru.
 
@@ -66,6 +76,7 @@ Pro ověření skutečného HTTP hostu a OTLP při zastaveném Mentoru:
 ```powershell
 $env:MENTOR_BUILD_CONFIGURATION = 'Release'
 node scripts/observability-smoke.mjs
+node scripts/mcp-smoke.mjs
 ```
 
 Parsery lze volitelně ověřit na vlastních lokálních souborech. Osobní konverzace ani databáze nepatří do Gitu:

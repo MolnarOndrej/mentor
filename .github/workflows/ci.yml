@@ -25,6 +25,10 @@ jobs:
       - run: dotnet restore Mentor.slnx --locked-mode
       - run: dotnet build Mentor.slnx --no-restore --configuration Release
       - run: dotnet run --project tests/Mentor.Checks --no-build --configuration Release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/mcp-smoke.mjs
       - run: dotnet format whitespace Mentor.slnx --no-restore --verify-no-changes
 
   ui:

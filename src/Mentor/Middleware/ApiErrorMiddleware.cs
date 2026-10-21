@@ -17,6 +17,7 @@ public sealed class ApiErrorMiddleware(RequestDelegate next, ILogger<ApiErrorMid
             var statusCode = error switch
             {
                 ArgumentException => StatusCodes.Status400BadRequest,
+                System.Text.Json.JsonException => StatusCodes.Status400BadRequest,
                 AnalysisConflictException => StatusCodes.Status409Conflict,
                 BadHttpRequestException badRequest => badRequest.StatusCode,
                 _ => StatusCodes.Status500InternalServerError

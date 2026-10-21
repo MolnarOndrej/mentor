@@ -14,7 +14,13 @@ public sealed class LocalAccessMiddleware(RequestDelegate next)
             return;
         }
 
-        if (context.Request.Method is not ("GET" or "HEAD") &&
+        var mcp = context.Request.Path.StartsWithSegments("/mcp");
+        if (mcp && context.Request.Headers.TryGetValue("Origin", out var mcpOrigin) && mcpOrigin != $"http://{host}")
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+        if (!mcp && context.Request.Method is not ("GET" or "HEAD") &&
             (context.Request.Headers["X-Mentor-Request"] != "1" ||
              (context.Request.Headers.TryGetValue("Origin", out var origin) && origin != $"http://{host}")))
         {

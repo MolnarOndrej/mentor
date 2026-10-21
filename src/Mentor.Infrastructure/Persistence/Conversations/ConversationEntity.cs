@@ -8,7 +8,20 @@ internal sealed class ConversationEntity
     {
         get; set;
     }
-    public string Url { get; set; } = "";
+    public string? Url
+    {
+        get; set;
+    }
+    public string IngestionKind { get; set; } = "share";
+    public string ContentKind { get; set; } = "transcript";
+    public string? Source
+    {
+        get; set;
+    }
+    public string? ExternalId
+    {
+        get; set;
+    }
     public string Title { get; set; } = "";
     public string Status { get; set; } = "queued";
     public string? Error
@@ -22,5 +35,6 @@ internal sealed class ConversationEntity
     }
     public List<Message> Messages { get; set; } = [];
 
-    public Conversation ToModel() => new(Id, Url, Title, Status, Error, CreatedAt, ImportedAt, Messages);
+    public Conversation ToModel() => new(Id, Url, Title, Status, Error, CreatedAt, ImportedAt, Messages,
+        IngestionKind, ContentKind, Source, ExternalId);
 }

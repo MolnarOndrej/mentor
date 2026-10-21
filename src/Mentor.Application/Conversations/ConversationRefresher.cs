@@ -9,13 +9,15 @@ public sealed class ConversationRefresher(IConversationRepository conversations,
         var conversation = conversations.FindConversation(id);
         if (conversation == null || DailySchedule.Day(DateTimeOffset.Parse(conversation.CreatedAt)) != DailySchedule.Day(clock.GetUtcNow()))
             return new(false, "Upravovat lze pouze dostupné dnešní konverzace.");
+        if (conversation.IngestionKind == "direct")
+            return new(false, "Přímo předaná data lze aktualizovat pouze novým předáním přes MCP.");
         if (conversation.Status is "queued" or "importing")
             return new(false, "Konverzace se právě načítá.");
 
         ImportedConversation data;
         try
         {
-            data = await importer.ImportAsync(conversation.Url, cancellationToken);
+            data = await importer.ImportAsync(conversation.Url!, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception error)
@@ -35,7 +37,7 @@ public sealed class ConversationRefresher(IConversationRepository conversations,
         if (day != DailySchedule.Day(clock.GetUtcNow()))
             return results;
         foreach (var conversation in conversations.Conversations().Where(c =>
-            DailySchedule.Day(DateTimeOffset.Parse(c.CreatedAt)) == day))
+            c.IngestionKind == "share" && DailySchedule.Day(DateTimeOffset.Parse(c.CreatedAt)) == day))
         {
             cancellationToken.ThrowIfCancellationRequested();
             // A conversation may have been deleted while the preceding link was loading.

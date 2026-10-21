@@ -127,7 +127,7 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
 
     public (Conversation Conversation, bool Added) Add(string url) => Write(db =>
     {
-        var existing = db.Conversations.SingleOrDefault(x => x.Url == url);
+        var existing = db.Conversations.SingleOrDefault(x => x.IngestionKind == "share" && x.Url == url);
         if (existing != null)
             return (existing.ToModel(), false);
         var entity = new ConversationEntity { Url = url, Title = "Čeká na načtení", CreatedAt = Now() };
@@ -136,9 +136,37 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
         return (entity.ToModel(), true);
     });
 
+    public DirectConversationResult UpsertDirect(DirectConversation data)
+    {
+        data.Validate();
+        return Write(db =>
+        {
+            var entity = db.Conversations.SingleOrDefault(x => x.IngestionKind == "direct" &&
+                x.Source == data.Source && x.ExternalId == data.ExternalId);
+            var added = entity == null;
+            if (entity == null)
+            {
+                entity = new ConversationEntity
+                {
+                    IngestionKind = "direct",
+                    Source = data.Source,
+                    ExternalId = data.ExternalId,
+                    CreatedAt = Now()
+                };
+                db.Conversations.Add(entity);
+            }
+            entity.Url = data.Url;
+            entity.ContentKind = data.ContentKind;
+            ApplyImport(entity, new ImportedConversation(data.Title, data.Messages.ToList()));
+            db.SaveChanges();
+            return new DirectConversationResult(entity.Id, added,
+                DailySchedule.Day(DateTimeOffset.Parse(entity.CreatedAt)), entity.ContentKind, entity.Messages.Count);
+        });
+    }
+
     public bool Retry(long id) => Write(db =>
     {
-        var entity = db.Conversations.SingleOrDefault(x => x.Id == id && x.Status == "failed");
+        var entity = db.Conversations.SingleOrDefault(x => x.Id == id && x.IngestionKind == "share" && x.Status == "failed");
         if (entity == null)
             return false;
         entity.Status = "queued";
@@ -149,7 +177,7 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
     public bool RefreshToday(long id, ImportedConversation data) => Write(db =>
     {
         var entity = db.Conversations.SingleOrDefault(x => x.Id == id);
-        if (entity == null || !IsToday(entity) || entity.Status is "queued" or "importing")
+        if (entity == null || entity.IngestionKind != "share" || !IsToday(entity) || entity.Status is "queued" or "importing")
             return false;
         ApplyImport(entity, data);
         return true;
@@ -169,7 +197,7 @@ public sealed class EfMentorRepository : IConversationRepository, IAnalysisRepos
 
     public Conversation? ClaimImport() => Write(db =>
     {
-        var entity = db.Conversations.Where(x => x.Status == "queued").OrderBy(x => x.Id).FirstOrDefault();
+        var entity = db.Conversations.Where(x => x.IngestionKind == "share" && x.Status == "queued").OrderBy(x => x.Id).FirstOrDefault();
         if (entity == null)
             return null;
         entity.Status = "importing";

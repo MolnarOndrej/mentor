@@ -32,7 +32,8 @@ public sealed class MentorService(
                 c.Id, c.Url, c.Title, c.Status, c.Error, c.CreatedAt, c.ImportedAt, c.Messages.Count,
                 [new DayCoverage(day, c.Messages.Count,
                     c.Messages.Count(m => coverage.TryGetValue(day, out var keys) &&
-                        keys.Contains(DailyAnalysisPolicy.MessageKey(c.Id, m))))]);
+                        keys.Contains(DailyAnalysisPolicy.MessageKey(c.Id, m))))],
+                c.IngestionKind, c.ContentKind, c.Source, c.ExternalId);
         }).ToList();
 
         var changedDays = summaries.SelectMany(c => c.Days.Select(d => d.Day)).Concat(reports.Select(a => a.Day))

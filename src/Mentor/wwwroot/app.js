@@ -145,6 +145,7 @@ function conversationActions(c) {
       },
     ],
   ]) {
+    if (c.ingestionKind === 'direct' && label === 'Aktualizovat konverzaci') continue;
     const control = button('', action, 'secondary conversation-action');
     control.title = label;
     control.disabled = updatingConversations;
@@ -173,6 +174,13 @@ function conversationCard(c, day, editable = false, readOnly = false) {
   if (editable) heading.append(conversationActions(c));
   card.append(heading);
   const meta = el('div', undefined, 'meta');
+  if (c.ingestionKind === 'direct')
+    meta.append(
+      el(
+        'span',
+        c.contentKind === 'summary' ? 'Přímé předání · souhrn' : 'Přímé předání · úplný přepis'
+      )
+    );
   if (c.status !== 'ready') meta.append(badge(c.status));
   if (!day) meta.append(document.createTextNode(`Vloženo ${date(c.createdAt)}`));
   if (meta.childNodes.length) card.append(meta);
@@ -330,12 +338,22 @@ async function showConversation(id, day, readOnly = false) {
   const content = $('conversation-content');
   content.replaceChildren();
   content.append(el('p', `Vloženo ${date(c.createdAt)}`, 'hint'));
+  if (c.ingestionKind === 'direct')
+    content.append(
+      el(
+        'p',
+        `${c.source} · ${c.contentKind === 'summary' ? 'Souhrn' : 'Úplný přepis'} · aktualizace přes MCP`,
+        'hint'
+      )
+    );
   const messages = c.messages;
   if (!messages.length)
     content.append(el('p', c.error || 'Pro vybraný den nejsou dostupné zprávy.'));
   for (const m of messages) {
     const row = el('div', undefined, 'message');
-    row.append(el('strong', `${m.number}. ${m.role === 'user' ? 'Vy' : 'AI'}`), el('pre', m.text));
+    const role =
+      { user: 'Vy', assistant: 'AI', system: 'Systém', tool: 'Nástroj' }[m.role] || m.role;
+    row.append(el('strong', `${m.number}. ${role}`), el('pre', m.text));
     content.append(row);
   }
   if (!$('conversation-dialog').open) $('conversation-dialog').showModal();

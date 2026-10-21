@@ -24,6 +24,7 @@ Application neodkazuje na ASP.NET Core, SQLite ani Infrastructure; testy ověřu
 | `Processes/ICliProcessRunner`, `CliProcessRunner` | Obecné CLI bez znalosti poskytovatele: UTF-8 I/O, timeout, limity a rušení |
 | `Hosting/MentorWorker` | Smyčka background služby, DI scope, pollování a shutdown |
 | `Endpoints` | HTTP mapování rozdělené na konverzace, rozbory, diskusi a prompt |
+| `Mcp/ConversationTools`, `Conversations/DirectConversation` | MCP adaptér a validace přímého snímku; [kontrakt](mcp.md) |
 | `Middleware`, `Observability` | Lokální přístup, jednotné chyby, health checky a telemetrie |
 
 UI má moduly pro API a bezpečné DOM, navigaci, automatické ukládání, editory, archiv a diskusi. `app.js` je propojuje a řídí obnovování stránky. Formátovaný text se vykresluje přes DOM, nikoli jako důvěryhodné HTML z modelu.
@@ -34,7 +35,7 @@ DI při startu kontroluje scope a registrace. Repository, workspace lease, telem
 
 Repository implementuje rozhraní podle potřeb konzumentů a sdílí jeden zámek, aby atomické operace zasahující konverzace, nastavení, rozbory a diskusi nemohly soupeřit. `IDbContextFactory<MentorDbContext>` vytváří nový kontext pro každou operaci; DbContext se mezi požadavky nesdílí. Čtení používá `AsNoTracking`, zápisy explicitní transakci. Testy pracují se skutečným SQLite providerem v dočasných souborech.
 
-Unikátní index chrání normalizované URL. Zprávy a klíče snímků jsou JSON kolekce s EF konvertorem a porovnáváním hodnot. Diskuse má unikátní pořadí v rozboru a kaskádové odstranění přes cizí klíč. Inicializace používá `EnsureCreated`; pravidlo pilotu nepovoluje automatické migrace. Zámek adresáře brání dvěma instancím nad jednou databází.
+Filtrované unikátní indexy chrání normalizované URL Share importů a dvojici zdroj/externí ID přímých záznamů. Přímý snímek se validuje a atomicky nahrazuje ve stavu `ready`; zachovává první den vložení a nevstupuje do HTTP obnovování. URL je u něj volitelná a druh obsahu rozlišuje přepis od souhrnu také v podkladech rozboru. Zprávy a klíče snímků jsou JSON kolekce s EF konvertorem a porovnáváním hodnot. Diskuse má unikátní pořadí v rozboru a kaskádové odstranění přes cizí klíč. Inicializace používá `EnsureCreated`; pravidlo pilotu nepovoluje automatické migrace. Zámek adresáře brání dvěma instancím nad jednou databází.
 
 ## Průchod úlohy a invarianty
 

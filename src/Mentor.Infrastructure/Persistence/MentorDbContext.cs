@@ -28,9 +28,14 @@ public sealed class MentorDbContext(DbContextOptions<MentorDbContext> options) :
         var conversations = modelBuilder.Entity<ConversationEntity>();
         conversations.ToTable("conversations");
         conversations.HasKey(x => x.Id);
-        conversations.HasIndex(x => x.Url).IsUnique();
+        conversations.HasIndex(x => x.Url).IsUnique().HasFilter("\"ingestion_kind\" = 'share'");
+        conversations.HasIndex(x => new { x.Source, x.ExternalId }).IsUnique().HasFilter("\"ingestion_kind\" = 'direct'");
         conversations.Property(x => x.Id).HasColumnName("id");
         conversations.Property(x => x.Url).HasColumnName("url");
+        conversations.Property(x => x.IngestionKind).HasColumnName("ingestion_kind");
+        conversations.Property(x => x.ContentKind).HasColumnName("content_kind");
+        conversations.Property(x => x.Source).HasColumnName("source");
+        conversations.Property(x => x.ExternalId).HasColumnName("external_id");
         conversations.Property(x => x.Title).HasColumnName("title");
         conversations.Property(x => x.Status).HasColumnName("status");
         conversations.Property(x => x.Error).HasColumnName("error");

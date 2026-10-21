@@ -241,6 +241,8 @@ try
 }
 catch (System.ComponentModel.Win32Exception) { Check(true, "missing CLI preserves original failure"); }
 await ApplicationChecks.RunAsync(Check);
+await DirectConversationChecks.RunAsync(Check);
+await McpAccessChecks.RunAsync(Check);
 await PersistenceChecks.RunAsync(Check);
 await AnalysisInterruptionChecks.RunAsync(Check);
 await DiscussionChecks.RunAsync(Check);

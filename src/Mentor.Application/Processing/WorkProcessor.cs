@@ -29,7 +29,7 @@ public sealed class WorkProcessor(
         if (conversation != null)
         {
             await ExecuteJobAsync("import", conversation.Id,
-                async () => queue.ImportDone(conversation.Id, await importer.ImportAsync(conversation.Url, cancellationToken)),
+                async () => queue.ImportDone(conversation.Id, await importer.ImportAsync(conversation.Url!, cancellationToken)),
                 error => queue.ImportFailed(conversation.Id, error), cancellationToken);
             return true;
         }
